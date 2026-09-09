@@ -1,0 +1,31 @@
+﻿name: Web quality gates
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: file:./dev.db
+      AUTH_SECRET: ci-only-secret-never-use-in-production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @anjuman/web exec prisma generate
+      - run: pnpm --filter @anjuman/web exec prisma db push
+      - run: node scripts/migrate.cjs prisma/dev.db
+        working-directory: apps/web
+      - run: node scripts/seed-discovery.cjs prisma/dev.db
+        working-directory: apps/web
+      - run: node qa-discovery.cjs
+        working-directory: apps/web
+      - run: node qa-regressions.cjs
+        working-directory: apps/web
+      - run: pnpm --filter @anjuman/web build

@@ -1,0 +1,27 @@
+{
+  "name": "anjuman",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Where Pakistani creators and brands meet.",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "clean": "turbo run clean && rm -rf node_modules"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.0",
+    "prettier": "^3.4.0",
+    "typescript": "^5.7.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "@types/react": "19.0.0"
+    }
+  },
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": "24.x"
+  }
+}

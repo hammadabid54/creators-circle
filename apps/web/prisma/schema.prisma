@@ -1,0 +1,556 @@
+// Creators Circle — Prisma schema
+//
+// Local dev: SQLite (file:./dev.db). No setup needed.
+// Production: Postgres (Supabase/Neon). Change `provider` and DATABASE_URL.
+//
+// Conventions:
+//   - String used for enum-like fields (SQLite compat). Postgres can later
+//     promote these to native enums via a migration.
+//   - JSON arrays stored as String (JSON.stringify/parse). Postgres can
+//     migrate to JSONB later.
+//   - All ids are cuid strings.
+//   - All timestamps are DateTime.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// AUTH (NextAuth.js compatible)
+// ============================================================
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  phone         String?   @unique
+  phoneVerified DateTime?
+  // "creator" | "brand" | "admin"
+  role          String?
+  lang          String    @default("en")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // NextAuth relations
+  accounts Account[]
+  sessions Session[]
+
+  // Profile (1:1)
+  creatorProfile CreatorProfile?
+  brandProfile   BrandProfile?
+
+  // Domain relations
+  deliveryReviews DeliveryReview[]
+  verifications Verification[]
+  otpTokens     OtpToken[]
+
+  // Campaign relations (brand side)
+  brandCampaigns Campaign[] @relation("BrandCampaigns")
+  brandContracts Contract[] @relation("BrandContracts")
+
+  // Campaign relations (creator side)
+  creatorApplications Application[] @relation("CreatorApplications")
+  creatorContracts    Contract[]    @relation("CreatorContracts")
+  creatorMessages     Message[]     @relation("CreatorMessages")
+  creatorReviews      Review[]      @relation("CreatorReviews")
+
+  @@index([phone])
+  @@index([email])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ============================================================
+// PHONE OTP (custom flow for 1D)
+// ============================================================
+
+model OtpToken {
+  id        String   @id @default(cuid())
+  userId    String?
+  // Legacy column stores a phone number or email:<normalized-address>.
+  phone     String
+  code      String
+  expires   DateTime
+  consumed  Boolean  @default(false)
+  attempts  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([phone])
+  @@index([code])
+}
+
+// ============================================================
+// CREATOR PROFILE
+// ============================================================
+
+model CreatorProfile {
+  id            String   @id @default(cuid())
+  userId        String   @unique
+  bio           String?
+  // JSON array, e.g. ["Lifestyle","Fashion"]
+  niches        String   @default("[]")
+  // JSON array, e.g. ["EN","UR","PN"]
+  languages     String   @default("[]")
+  city          String?
+  responseRate  Float?
+  avgRating     Float?
+  verified      Boolean  @default(false)
+  available     Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  socialAccounts SocialAccount[]
+  rateCard       RateCard?
+  portfolio      PortfolioItem[]
+  brandCollabs   BrandCollab[]
+  audience       Audience?
+  taxonomy       CreatorTaxon[]
+}
+
+model SocialAccount {
+  id              String   @id @default(cuid())
+  creatorId       String
+  // "instagram" | "youtube" | "tiktok" | "facebook"
+  platform        String
+  handle          String
+  externalId      String?
+  followers       Int      @default(0)
+  engagementRate  Float?
+  avgViews        Int?
+  // OAuth tokens (null in dev mock mode)
+  accessToken     String?
+  refreshToken    String?
+  tokenExpiresAt  DateTime?
+  // "connected" | "dev_mock" | "expired" | "revoked"
+  connectionState String   @default("connected")
+  lastSyncedAt    DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  creator CreatorProfile @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+
+  metricSnapshots CreatorMetricSnapshot[]
+
+  @@unique([creatorId, platform])
+  @@index([platform])
+}
+
+model Audience {
+  id                String    @id @default(cuid())
+  creatorId         String    @unique
+  // JSON: ["Karachi","Lahore","Islamabad"]
+  topCities         String    @default("[]")
+  // JSON: {"18-24": 35, "25-34": 45, ...}
+  ageSplit          String    @default("{}")
+  // JSON: {"F": 60, "M": 40}
+  genderSplit       String    @default("{}")
+  authenticityScore Float?
+  lastSyncedAt      DateTime?
+
+  creator CreatorProfile @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+}
+
+model RateCard {
+  id                String   @id @default(cuid())
+  creatorId         String   @unique
+  postRate          Int?
+  storyRate         Int?
+  reelRate          Int?
+  youtubeLongRate   Int?
+  youtubeShortRate  Int?
+  currency          String   @default("PKR")
+  updatedAt         DateTime @updatedAt
+
+  creator CreatorProfile @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+}
+
+model PortfolioItem {
+  id        String   @id @default(cuid())
+  creatorId String
+  // "image" | "video" | "link"
+  type      String
+  url       String
+  caption   String?
+  createdAt DateTime @default(now())
+
+  creator CreatorProfile @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+
+  @@index([creatorId])
+}
+
+model BrandCollab {
+  id             String   @id @default(cuid())
+  creatorId      String
+  brandName      String
+  brandLogo      String?
+  campaignType   String?
+  year           Int?
+  resultsSummary String?
+  brandVerified  Boolean  @default(false)
+
+  creator CreatorProfile @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+
+  @@index([creatorId])
+}
+
+// ============================================================
+// BRAND PROFILE
+// ============================================================
+
+model BrandProfile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  company         String
+  industry        String?
+  ntn             String?
+  website         String?
+  logo            String?
+  city            String?
+  // "PKR_50K_100K" | "PKR_100K_500K" | "PKR_500K_PLUS"
+  monthlyBudget   String?
+  // JSON array of niche ids
+  preferredNiches String   @default("[]")
+  verified        Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ============================================================
+// VERIFICATION (CNIC, KYC)
+// ============================================================
+
+model Verification {
+  id         String    @id @default(cuid())
+  userId     String
+  cnicFront  String?
+  cnicBack   String?
+  selfie     String?
+  // "pending" | "approved" | "rejected"
+  status     String    @default("pending")
+  reviewedBy String?
+  reviewedAt DateTime?
+  notes      String?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+}
+
+// ============================================================
+// CAMPAIGNS
+// ============================================================
+
+model Campaign {
+  id              String   @id @default(cuid())
+  brandId         String
+  title           String
+  brief           String
+  budgetMin       Int
+  budgetMax       Int
+  // JSON array of niche ids
+  targetNiches    String   @default("[]")
+  // JSON array: ["instagram","youtube","tiktok","facebook"]
+  targetPlatforms String   @default("[]")
+  // JSON array of cities
+  targetCities    String?
+  // JSON: {"18-24": 50, ...}
+  targetAge       String?
+  // JSON: [{"type":"post","qty":2},{"type":"reel","qty":1}]
+  deliverables    String   @default("[]")
+  timeline        String?
+  // "open" | "closed" | "filled"
+  status          String   @default("open")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  brand        User          @relation("BrandCampaigns", fields: [brandId], references: [id], onDelete: Cascade)
+  applications Application[]
+  contracts    Contract[]
+
+  @@index([status])
+  @@index([brandId])
+}
+
+model Application {
+  id             String   @id @default(cuid())
+  campaignId     String
+  creatorId      String
+  proposedRate   Int
+  timeline       String?
+  pitch          String?
+  // JSON array of URLs
+  portfolioLinks String?
+  // "pending" | "shortlisted" | "accepted" | "rejected"
+  status         String   @default("pending")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  creator  User     @relation("CreatorApplications", fields: [creatorId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, creatorId])
+  @@index([status])
+}
+
+model Contract {
+  id           String   @id @default(cuid())
+  campaignId   String?
+  creatorId    String
+  brandId      String
+  agreedRate   Int
+  // JSON: [{"type":"post","qty":2,"notes":"..."}]
+  deliverables String   @default("[]")
+  // "active" | "completed" | "cancelled" | "disputed"
+  status       String   @default("active")
+  // "pending" | "funded" | "held" | "released" | "refunded"
+  escrowState  String   @default("pending")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  campaign     Campaign?          @relation(fields: [campaignId], references: [id])
+  creator      User               @relation("CreatorContracts", fields: [creatorId], references: [id])
+  brand        User               @relation("BrandContracts", fields: [brandId], references: [id])
+  milestones   Milestone[]
+  submissions  ContentSubmission[]
+  messages     Message[]
+  reviews      Review[]
+  transactions Transaction[]
+  disputes     Dispute[]
+
+  @@index([status])
+  @@index([creatorId])
+  @@index([brandId])
+}
+
+model Milestone {
+  id         String    @id @default(cuid())
+  contractId String
+  title      String
+  amount     Int
+  dueDate    DateTime?
+  // "pending" | "submitted" | "approved" | "disputed" | "revision_requested"
+  status     String    @default("pending")
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  contract    Contract            @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  submissions ContentSubmission[]
+
+  @@index([contractId])
+  @@index([status])
+}
+
+model ContentSubmission {
+  review DeliveryReview?
+  id          String   @id @default(cuid())
+  contractId  String
+  milestoneId String?
+  // JSON array of file URLs
+  fileUrls    String   @default("[]")
+  caption     String?
+  livePostUrl String?
+  submittedAt DateTime @default(now())
+  // "pending" | "approved" | "rejected"
+  status      String   @default("pending")
+
+  contract  Contract   @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  milestone Milestone? @relation(fields: [milestoneId], references: [id])
+
+  @@index([contractId])
+}
+
+// ============================================================
+// MESSAGING
+// ============================================================
+
+model Message {
+  id        String   @id @default(cuid())
+  // For 1D we use contractId as threadId. Upgrade to a Thread entity later
+  // if 1:1 (non-contract) DMs are added.
+  threadId  String
+  senderId  String
+  body      String
+  // JSON array of URLs
+  mediaUrls String?
+  createdAt DateTime @default(now())
+
+  contract Contract? @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  sender   User      @relation("CreatorMessages", fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@index([threadId])
+  @@index([senderId])
+}
+
+// ============================================================
+// REVIEWS
+// ============================================================
+
+model Review {
+  id                  String   @id @default(cuid())
+  contractId          String
+  reviewerId          String
+  rating              Int
+  body                String?
+  responseRateScore   Int?
+  contentQualityScore Int?
+  createdAt           DateTime @default(now())
+
+  contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  reviewer User     @relation("CreatorReviews", fields: [reviewerId], references: [id], onDelete: Cascade)
+
+  @@unique([contractId, reviewerId])
+}
+
+// ============================================================
+// PAYMENTS (double-entry ledger)
+// ============================================================
+
+model Transaction {
+  id             String   @id @default(cuid())
+  contractId     String?
+  fromUserId     String?
+  toUserId       String?
+  // "deposit" | "escrow_fund" | "escrow_release" | "withdrawal" | "commission" | "refund"
+  type           String
+  amount         Int
+  currency       String   @default("PKR")
+  // "jazzcash" | "easypaisa" | "bank" | "stripe"
+  gateway        String?
+  gatewayRef     String?
+  // "pending" | "completed" | "failed" | "refunded"
+  status         String   @default("pending")
+  idempotencyKey String?  @unique
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  contract Contract? @relation(fields: [contractId], references: [id])
+
+  @@index([status])
+  @@index([contractId])
+}
+
+model Dispute {
+  id         String    @id @default(cuid())
+  contractId String
+  openedById String
+  reason     String
+  // "open" | "investigating" | "resolved"
+  status     String    @default("open")
+  resolution String?
+  resolvedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+}
+
+// Versioned additive SQL migration: db/migrations/001_creator_metrics.sql
+model CreatorMetricSnapshot {
+ id String @id
+ socialAccountId String
+ observedAt String
+ followers Int
+ source String
+ posts String @default("[]")
+ cities String @default("[]")
+ ages String @default("[]")
+ socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
+ @@unique([socialAccountId, observedAt])
+ @@index([socialAccountId, observedAt], map: "CreatorMetricSnapshot_account_time")
+}
+
+model DiscoveryTaxon {
+ id String @id
+ kind String
+ slug String
+ label String
+ value String
+ parentId String?
+ aliases String @default("[]")
+ enabled Boolean @default(true)
+ parent DiscoveryTaxon? @relation("TaxonomyTree",fields:[parentId],references:[id])
+ children DiscoveryTaxon[] @relation("TaxonomyTree")
+ creators CreatorTaxon[]
+ @@unique([kind,slug])
+ @@unique([kind,value])
+}
+model CreatorTaxon {
+ creatorId String
+ taxonId String
+ creator CreatorProfile @relation(fields:[creatorId],references:[id],onDelete:Cascade)
+ taxon DiscoveryTaxon @relation(fields:[taxonId],references:[id],onDelete:Cascade)
+ @@id([creatorId,taxonId])
+ @@index([taxonId,creatorId],map:"CreatorTaxon_lookup")
+}
+model DiscoveryPage {
+ path String @id
+ title String
+ description String
+ intro String
+ filters String @default("{}")
+ published Boolean @default(true)
+ indexable Boolean @default(false)
+ redirectTo String?
+ updatedAt String
+}
+
+model DeliveryReview {
+ id String @id @default(cuid())
+ submissionId String @unique
+ reviewerId String
+ action String
+ feedback String
+ createdAt DateTime @default(now())
+ submission ContentSubmission @relation(fields:[submissionId],references:[id],onDelete:Cascade)
+ reviewer User @relation(fields:[reviewerId],references:[id])
+}
