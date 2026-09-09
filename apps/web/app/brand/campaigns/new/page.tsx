@@ -15,23 +15,36 @@ export default async function NewCampaignPage({
   const sp = await searchParams;
   const invitedCreatorId = sp.invite || null;
 
-  // Look up the invited creator's name for the form banner.
-  let invitedCreator: { id: string; name: string; city: string | null } | null = null;
+  // Look up the invited creator for the form banner + niche pre-fill.
+  let invitedCreator:
+    | { id: string; name: string; city: string | null; niches: string[] }
+    | null = null;
   if (invitedCreatorId) {
     const creator = await db.user.findUnique({
       where: { id: invitedCreatorId },
       select: {
         id: true,
         name: true,
-        creatorProfile: { select: { id: true, city: true } },
+        creatorProfile: {
+          select: { id: true, city: true, niches: true },
+        },
       },
     });
-    // Only set the banner if the user actually has a creator profile.
     if (creator?.creatorProfile) {
+      // Parse the JSON-stored niches. Skip anything that doesn't match a
+      // known NICHE_OPTIONS label so we don't pre-select an invalid value.
+      let niches: string[] = [];
+      try {
+        const raw = JSON.parse(creator.creatorProfile.niches ?? '[]');
+        if (Array.isArray(raw)) niches = raw.filter((n): n is string => typeof n === 'string');
+      } catch {
+        niches = [];
+      }
       invitedCreator = {
         id: creator.id,
         name: creator.name ?? 'Creator',
         city: creator.creatorProfile.city,
+        niches,
       };
     }
   }

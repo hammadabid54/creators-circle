@@ -57,17 +57,30 @@ export default async function ApplicationsPage() {
                   <p className="cc-subtle mt-4 whitespace-pre-wrap">{a.pitch}</p>
                   <div className="mt-4 pt-4 border-t border-anjuman-line flex flex-wrap gap-3 justify-between text-sm">
                     <span className="text-anjuman-ink-soft">
-                      Your proposal ·{' '}
-                      <strong className="text-anjuman-ink">
-                        {formatPKR(a.proposedRate)}
-                      </strong>
+                      {a.proposedRate > 0 ? (
+                        <>
+                          Your proposal ·{' '}
+                          <strong className="text-anjuman-ink">
+                            {formatPKR(a.proposedRate)}
+                          </strong>
+                        </>
+                      ) : (
+                        <em className="text-anjuman-ink-soft">
+                          Rate to be discussed in messages
+                        </em>
+                      )}
                     </span>
-                    {a.campaign.contracts[0] && (
+                    {a.campaign.contracts[0] ? (
                       <Link
                         className="cc-link inline-flex gap-1"
                         href={'/messages/' + a.campaign.contracts[0].id}
                       >
                         Open conversation
+                        <ArrowUpRight size={15} />
+                      </Link>
+                    ) : (
+                      <Link className="cc-link inline-flex gap-1" href={'/messages/' + a.id}>
+                        Message brand
                         <ArrowUpRight size={15} />
                       </Link>
                     )}

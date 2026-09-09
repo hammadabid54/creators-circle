@@ -45,12 +45,19 @@ export function CampaignForm({
   invitedCreator,
   invitedCreatorId,
 }: {
-  invitedCreator: { id: string; name: string; city: string | null } | null;
+  invitedCreator:
+    | { id: string; name: string; city: string | null; niches: string[] }
+    | null;
   invitedCreatorId: string | null;
 }) {
   const router = useRouter();
   const { data: session } = useSession();
-  const [data, setData] = useState(initial);
+  const [data, setData] = useState<FormData>({
+    ...initial,
+    // Pre-select the invited creator's niches so the brand doesn't have to
+    // re-tag the campaign. The brand can add/remove as needed.
+    targetNiches: (invitedCreator?.niches ?? []).slice(0, 5),
+  });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [ready, setReady] = useState(false);
