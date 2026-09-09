@@ -49,7 +49,9 @@ export default async function ApplicationsPage() {
                         ? 'Declined'
                         : a.status === 'accept'
                           ? 'Accepted'
-                          : a.status}
+                          : a.status === 'invited'
+                            ? 'Invited'
+                            : a.status}
                     </span>
                   </div>
                   <p className="cc-subtle mt-4 whitespace-pre-wrap">{a.pitch}</p>

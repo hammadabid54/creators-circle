@@ -18,6 +18,9 @@ const schema = z.object({
   targetCities: z.array(z.string()).default([]),
   deliverables: z.array(deliverableSchema).min(1).max(10),
   timeline: z.string().max(200).optional(),
+  // Brand-initiated invite: when set, an Application is created with status "invited"
+  // so the creator can see the campaign + message the brand before accepting.
+  invitedCreatorId: z.string().min(1).optional(),
 });
 
 export async function POST(req: Request) {
@@ -65,7 +68,38 @@ export async function POST(req: Request) {
     },
   });
 
-  return NextResponse.json({ ok: true, id: campaign.id });
+  // Brand-initiated invite: create an Application in `invited` state so the
+  // creator sees it in their applications and the thread is open for messaging
+  // (the messages API accepts application IDs as threadIds for invites).
+  if (data.invitedCreatorId) {
+    try {
+      await db.application.create({
+        data: {
+          campaignId: campaign.id,
+          creatorId: data.invitedCreatorId,
+          // 0 is a placeholder — the actual rate is agreed in messages or at
+          // accept-time. Stored as 0 so we can distinguish "not yet agreed"
+          // from a real value in the UI.
+          proposedRate: 0,
+          pitch:
+            'You have been invited to discuss this campaign with the brand. ' +
+            'Send a message to begin, or accept the invite to start work.',
+          status: 'invited',
+        },
+      });
+    } catch (err) {
+      // The unique (campaignId, creatorId) constraint blocks duplicate
+      // applications. If the creator already has an open application on
+      // this campaign, we still return success — the campaign is created
+      // and the existing application is the one the creator sees.
+      if (err && typeof err === 'object' && 'code' in err && err.code === 'P2002') {
+        return NextResponse.json({ ok: true, id: campaign.id, invited: 'already-applied' });
+      }
+      throw err;
+    }
+  }
+
+  return NextResponse.json({ ok: true, id: campaign.id, invited: !!data.invitedCreatorId });
 }
 
 export async function GET() {

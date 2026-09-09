@@ -72,7 +72,7 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
     { label: 'YouTube video', price: profile.rateCard?.youtubeLongRate },
     { label: 'YouTube Short', price: profile.rateCard?.youtubeShortRate },
   ].filter((r): r is { label: string; price: number } => typeof r.price === 'number');
-  const action = owner ? '/creator/onboarding' : '/brand/campaigns/new';
+  const action = owner ? '/creator/onboarding' : `/brand/campaigns/new?invite=${id}`;
   return (
     <>
       <main className="cc-container pt-7 md:pt-10 pb-24 md:pb-6">

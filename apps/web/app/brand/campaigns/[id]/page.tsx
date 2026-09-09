@@ -78,7 +78,9 @@ export default async function BrandCampaignDetailPage({
                         ? 'Declined'
                         : a.status === 'accept'
                           ? 'Accepted'
-                          : a.status}
+                          : a.status === 'invited'
+                            ? 'Invited'
+                            : a.status}
                     </span>
                   </div>
                   <p className="mt-5 text-sm text-anjuman-ink-soft leading-relaxed whitespace-pre-wrap">
