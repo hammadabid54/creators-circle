@@ -5,10 +5,16 @@ import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { DeliveryForm } from './delivery-form';
 import { Composer } from './composer';
+
 export default async function Conversation({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const session = await auth();
   if (!session?.user?.id) redirect('/signin?callbackUrl=' + encodeURIComponent('/messages/' + id));
+
+  // Resolve threadId. Try the contract first (post-acceptance collaboration),
+  // then fall back to an application (pre-acceptance — brand invites or
+  // creator applications). The same threadId field on the Message model
+  // holds either, so the API and inbox can both work for invites.
   const contract = await db.contract.findFirst({
     where: { id, OR: [{ creatorId: session.user.id }, { brandId: session.user.id }] },
     include: {
@@ -24,10 +30,132 @@ export default async function Conversation({ params }: { params: Promise<{ id: s
       campaign: { select: { title: true } },
       creator: { select: { name: true } },
       brand: { select: { name: true, brandProfile: { select: { company: true } } } },
-      messages: { orderBy: { createdAt: 'asc' } },
     },
   });
-  if (!contract) notFound();
+
+  // Messages for the contract thread. Fetched separately because the
+  // Message schema no longer has a typed relation to Contract (threadId
+  // is a polymorphic string that may be a contractId or applicationId).
+  const contractMessages = contract
+    ? await db.message.findMany({
+        where: { threadId: id },
+        orderBy: { createdAt: 'asc' },
+      })
+    : [];
+
+  if (!contract) {
+    // Application thread: look up the application, then fetch the related
+    // creator and campaign details in separate queries. We avoid
+    // `include` here because the polymorphic threadId means messages are
+    // fetched separately anyway, and the team was right to be careful
+    // about what gets included in a thread lookup.
+    const application = await db.application.findUnique({ where: { id } });
+    if (application) {
+      // Fetch related records in parallel and check participation.
+      const [creator, campaign, appMessages] = await Promise.all([
+        db.user.findUnique({
+          where: { id: application.creatorId },
+          select: { name: true },
+        }),
+        db.campaign.findUnique({
+          where: { id: application.campaignId },
+          select: {
+            brandId: true,
+            title: true,
+            brand: { select: { name: true, brandProfile: { select: { company: true } } } },
+          },
+        }),
+        db.message.findMany({
+          where: { threadId: id },
+          orderBy: { createdAt: 'asc' },
+        }),
+      ]);
+
+      const isBrand = campaign?.brandId === session.user.id;
+      const isCreator = application.creatorId === session.user.id;
+      if (!isBrand && !isCreator) notFound();
+
+      const appName = isCreator
+        ? campaign?.brand.brandProfile?.company || campaign?.brand.name || 'Brand'
+        : creator?.name || 'Creator';
+
+      return (
+        <main className="cc-container max-w-4xl py-8 md:py-12">
+          <Link href="/messages" className="cc-link text-sm inline-flex gap-2 items-center mb-6">
+            <ArrowLeft size={15} />
+            All conversations
+          </Link>
+          <h1 className="cc-title mb-3">{campaign?.title || 'Direct conversation'}</h1>
+          <p className="cc-subtle mb-6">
+            Conversation with {appName}{' '}
+            <span className="ml-2 inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-anjuman-yellow/25 text-anjuman-ink">
+              Pre-agreement
+            </span>
+          </p>
+          <div className="cc-panel p-5 md:p-7 mb-6">
+            <p className="cc-eyebrow mb-2">Before the deal</p>
+            <h2 className="text-2xl font-semibold">Talk it through first</h2>
+            <p className="cc-subtle mt-2">
+              Messages here happen before a contract exists. When you both agree on scope and
+              rate, the brand can accept the proposal and a contract with milestones is created.
+              After that, deliverables and approvals live in the collaboration view.
+            </p>
+          </div>
+          <div className="cc-panel overflow-hidden">
+            <div className="p-5 md:p-7 border-b border-anjuman-line">
+              <p className="cc-eyebrow mb-2">Your conversation</p>
+              <h2 className="text-2xl font-semibold">Messages with {appName}</h2>
+              <p className="cc-subtle mt-2">{campaign?.title}</p>
+            </div>
+            <div className="p-5 md:p-7 min-h-[260px] space-y-5">
+              {appMessages.length ? (
+                appMessages.map((m) => (
+                  <div
+                    key={m.id}
+                    className={
+                      'flex ' + (m.senderId === session.user.id ? 'justify-end' : 'justify-start')
+                    }
+                  >
+                    <div
+                      className={
+                        'max-w-[85%] rounded-xl p-4 ' +
+                        (m.senderId === session.user.id ? 'bg-[#eee3eb]' : 'bg-anjuman-line-soft')
+                      }
+                    >
+                      <p className="text-xs text-anjuman-ink-soft mb-2">
+                        {m.senderId === session.user.id ? 'You' : appName}
+                      </p>
+                      <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">
+                        {m.body}
+                      </p>
+                      <time
+                        className="text-xs text-anjuman-ink-soft mt-2 block"
+                        dateTime={m.createdAt.toISOString()}
+                      >
+                        {m.createdAt.toLocaleString('en-GB', {
+                          day: 'numeric',
+                          month: 'short',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}
+                      </time>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="cc-subtle text-center py-14">
+                  Introduce yourself and start the conversation.
+                </p>
+              )}
+            </div>
+            <Composer threadId={id} />
+          </div>
+        </main>
+      );
+    }
+    notFound();
+  }
+
   const name =
     contract.brandId === session.user.id
       ? contract.creator.name || 'Creator'
@@ -130,8 +258,8 @@ export default async function Conversation({ params }: { params: Promise<{ id: s
           <p className="cc-subtle mt-2">{contract.campaign?.title || 'Direct collaboration'}</p>
         </div>
         <div className="p-5 md:p-7 min-h-[260px] space-y-5">
-          {contract.messages.length ? (
-            contract.messages.map((m) => (
+          {contractMessages.length ? (
+            contractMessages.map((m) => (
               <div
                 key={m.id}
                 className={

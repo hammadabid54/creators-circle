@@ -78,7 +78,9 @@ export default async function BrandCampaignDetailPage({
                         ? 'Declined'
                         : a.status === 'accept'
                           ? 'Accepted'
-                          : a.status}
+                          : a.status === 'invited'
+                            ? 'Invited'
+                            : a.status}
                     </span>
                   </div>
                   <p className="mt-5 text-sm text-anjuman-ink-soft leading-relaxed whitespace-pre-wrap">
@@ -92,7 +94,7 @@ export default async function BrandCampaignDetailPage({
                     {a.timeline && <span className="text-anjuman-ink-soft">{a.timeline}</span>}
                   </div>
                   <ApplicationActions id={a.id} status={a.status} />
-                  {campaign.contracts.find((c) => c.creatorId === a.creatorId) && (
+                  {campaign.contracts.find((c) => c.creatorId === a.creatorId) ? (
                     <Link
                       className="cc-link text-sm inline-flex gap-1 mt-4"
                       href={
@@ -101,6 +103,14 @@ export default async function BrandCampaignDetailPage({
                       }
                     >
                       Open conversation
+                      <ArrowUpRight size={16} />
+                    </Link>
+                  ) : (
+                    <Link
+                      className="cc-link text-sm inline-flex gap-1 mt-4"
+                      href={'/messages/' + a.id}
+                    >
+                      Message {a.creator.name?.split(' ')[0] || 'creator'}
                       <ArrowUpRight size={16} />
                     </Link>
                   )}

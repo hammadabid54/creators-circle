@@ -360,7 +360,6 @@ model Contract {
   brand        User               @relation("BrandContracts", fields: [brandId], references: [id])
   milestones   Milestone[]
   submissions  ContentSubmission[]
-  messages     Message[]
   reviews      Review[]
   transactions Transaction[]
   disputes     Dispute[]
@@ -413,8 +412,11 @@ model ContentSubmission {
 
 model Message {
   id        String   @id @default(cuid())
-  // For 1D we use contractId as threadId. Upgrade to a Thread entity later
-  // if 1:1 (non-contract) DMs are added.
+  // threadId is a polymorphic string: it can be either a Contract.id
+  // (post-acceptance collaboration) or an Application.id (pre-acceptance
+  // — brand invites or open proposals). The recipient/lookup code in
+  // /api/messages resolves the id against both tables and verifies the
+  // caller is a participant in either.
   threadId  String
   senderId  String
   body      String
@@ -422,7 +424,6 @@ model Message {
   mediaUrls String?
   createdAt DateTime @default(now())
 
-  contract Contract? @relation(fields: [threadId], references: [id], onDelete: Cascade)
   sender   User      @relation("CreatorMessages", fields: [senderId], references: [id], onDelete: Cascade)
 
   @@index([threadId])

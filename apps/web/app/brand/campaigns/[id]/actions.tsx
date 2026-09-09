@@ -26,10 +26,11 @@ export function ApplicationActions({ id, status }: { id: string; status: string 
       setBusy(false);
     }
   }
-  if (!['pending', 'shortlisted'].includes(status)) return null;
+  if (!['pending', 'shortlisted', 'invited'].includes(status)) return null;
   return (
     <div>
       <div className="flex flex-wrap gap-2 mt-4">
+        {/* Shortlist only applies to open proposals, not direct invites. */}
         {status === 'pending' && (
           <button
             className="cc-button cc-button-secondary"

@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Loader2, Plus, X } from 'lucide-react';
+import { ArrowLeft, Loader2, Plus, X, MapPin, Send } from 'lucide-react';
 import { CITY_OPTIONS, NICHE_OPTIONS, PLATFORM_OPTIONS } from '@/lib/profile-data';
 import { z } from 'zod';
 const schema = z.object({
@@ -41,10 +41,23 @@ const labels = {
   youtube_long: 'YouTube video',
   youtube_short: 'YouTube Short',
 };
-export function CampaignForm() {
+export function CampaignForm({
+  invitedCreator,
+  invitedCreatorId,
+}: {
+  invitedCreator:
+    | { id: string; name: string; city: string | null; niches: string[] }
+    | null;
+  invitedCreatorId: string | null;
+}) {
   const router = useRouter();
   const { data: session } = useSession();
-  const [data, setData] = useState(initial);
+  const [data, setData] = useState<FormData>({
+    ...initial,
+    // Pre-select the invited creator's niches so the brand doesn't have to
+    // re-tag the campaign. The brand can add/remove as needed.
+    targetNiches: (invitedCreator?.niches ?? []).slice(0, 5),
+  });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [ready, setReady] = useState(false);
@@ -100,6 +113,7 @@ export function CampaignForm() {
           budgetMin: Number(data.budgetMin),
           budgetMax: Number(data.budgetMax),
           deliverables: data.deliverables.map((d) => ({ ...d, qty: Number(d.qty) })),
+          invitedCreatorId: invitedCreatorId || undefined,
         }),
       });
       const result = await res.json();
@@ -131,6 +145,40 @@ export function CampaignForm() {
         </p>
       </div>
       <div className="grid lg:grid-cols-[1fr_320px] gap-10 max-w-5xl mx-auto">
+        {invitedCreator && (
+          <div className="lg:col-span-2 mb-2">
+            <div className="bg-[#f2eaf0] border border-anjuman-purple/30 rounded-2xl p-4 md:p-5 flex items-start gap-4">
+              <div className="w-10 h-10 rounded-xl bg-anjuman-purple/15 text-anjuman-purple flex items-center justify-center shrink-0">
+                <Send size={18} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-wider text-anjuman-purple mb-1">
+                  Direct invite
+                </p>
+                <p className="text-sm text-anjuman-ink">
+                  You&rsquo;re inviting{' '}
+                  <b className="font-semibold">{invitedCreator.name}</b>
+                  {invitedCreator.city && (
+                    <>
+                      {' '}
+                      <span className="inline-flex items-center gap-1 text-anjuman-ink-soft">
+                        <MapPin size={12} /> {invitedCreator.city}
+                      </span>
+                    </>
+                  )}
+                  . When you publish, they&rsquo;ll see this campaign in their applications
+                  with an &ldquo;Invited&rdquo; badge and can message you here.
+                </p>
+              </div>
+              <Link
+                href="/creators"
+                className="text-xs text-anjuman-ink-soft hover:text-anjuman-ink underline shrink-0"
+              >
+                Pick someone else
+              </Link>
+            </div>
+          </div>
+        )}
         <div>
           <p className="cc-eyebrow mb-3">Put your idea out there</p>
           <h1 className="cc-title">A clear brief. A great beginning.</h1>

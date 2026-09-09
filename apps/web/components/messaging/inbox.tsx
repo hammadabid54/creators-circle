@@ -4,24 +4,41 @@ import { MessageSquare, ArrowUpRight } from 'lucide-react';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { Avatar } from '@/components/ui/avatar';
+
 export default async function MessagesInboxPage() {
   const session = await auth();
   if (!session?.user?.id) redirect('/signin?callbackUrl=/messages');
+  const userId = session.user.id;
   const contracts = await db.contract.findMany({
-    where: { OR: [{ creatorId: session.user.id }, { brandId: session.user.id }] },
+    where: { OR: [{ creatorId: userId }, { brandId: userId }] },
     include: {
       creator: { select: { name: true, image: true } },
       brand: { select: { name: true, brandProfile: { select: { company: true } } } },
       campaign: { select: { title: true } },
-      messages: { orderBy: { createdAt: 'desc' }, take: 1 },
     },
     orderBy: { updatedAt: 'desc' },
   });
-  contracts.sort(
-    (a, b) =>
-      (b.messages[0]?.createdAt || b.updatedAt).getTime() -
-      (a.messages[0]?.createdAt || a.updatedAt).getTime(),
-  );
+
+  // Fetch the latest message per contract in one query, then merge.
+  const contractIds = contracts.map((c) => c.id);
+  const latestMessages = contractIds.length
+    ? await db.message.findMany({
+        where: { threadId: { in: contractIds } },
+        orderBy: { createdAt: 'desc' },
+      })
+    : [];
+  // Keep only the latest message per threadId.
+  const latestByThread = new Map<string, (typeof latestMessages)[number]>();
+  for (const m of latestMessages) {
+    if (!latestByThread.has(m.threadId)) latestByThread.set(m.threadId, m);
+  }
+
+  contracts.sort((a, b) => {
+    const aTime = (latestByThread.get(a.id)?.createdAt || a.updatedAt).getTime();
+    const bTime = (latestByThread.get(b.id)?.createdAt || b.updatedAt).getTime();
+    return bTime - aTime;
+  });
+
   return (
     <main className="cc-container max-w-4xl py-10 md:py-14">
       <p className="cc-eyebrow mb-3">Keep the conversation going</p>
@@ -30,10 +47,11 @@ export default async function MessagesInboxPage() {
       {contracts.length ? (
         <div className="cc-panel divide-y divide-anjuman-line">
           {contracts.map((c) => {
-            const isBrand = c.brandId === session.user.id;
+            const isBrand = c.brandId === userId;
             const name = isBrand
               ? c.creator.name || 'Creator'
               : c.brand.brandProfile?.company || c.brand.name || 'Brand';
+            const lastMessage = latestByThread.get(c.id);
             return (
               <Link
                 key={c.id}
@@ -45,7 +63,7 @@ export default async function MessagesInboxPage() {
                   <div className="flex justify-between gap-3">
                     <h2 className="font-semibold">{name}</h2>
                     <span className="text-xs text-anjuman-ink-soft">
-                      {(c.messages[0]?.createdAt || c.createdAt).toLocaleDateString('en-GB', {
+                      {(lastMessage?.createdAt || c.createdAt).toLocaleDateString('en-GB', {
                         day: 'numeric',
                         month: 'short',
                       })}
@@ -55,7 +73,7 @@ export default async function MessagesInboxPage() {
                     {c.campaign?.title || 'Direct collaboration'}
                   </p>
                   <p className="cc-subtle truncate mt-2">
-                    {c.messages[0]?.body || 'Your collaboration is ready for a conversation.'}
+                    {lastMessage?.body || 'Your collaboration is ready for a conversation.'}
                   </p>
                 </div>
                 <ArrowUpRight size={17} className="text-anjuman-ink-soft shrink-0" />
