@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, ArrowRight, Check, Loader2, Plus, X } from 'lucide-react';
 import { z } from 'zod';
 import { Avatar } from '@/components/ui/avatar';
+import { Breadcrumb } from '@/components/ui/breadcrumb';
 import { PLATFORM_OPTIONS } from '@/lib/profile-data';
 const draftSchema = z.object({
   name: z.string(),
@@ -55,7 +56,7 @@ export function CreatorOnboardingWizard({
   const [error, setError] = useState('');
   const [socials, setSocials] = useState(initial.socialAccounts);
   const editing = initial.niches.length > 0;
-  const key = 'creators-circle:profile-draft:' + userId;
+  const key = 'kollabo:profile-draft:' + userId;
   useEffect(() => {
     try {
       const result = draftSchema.safeParse(JSON.parse(sessionStorage.getItem(key) || 'null'));
@@ -171,10 +172,13 @@ export function CreatorOnboardingWizard({
   return (
     <div className="cc-container py-9 md:py-12">
       <div className="flex items-center justify-between gap-4 mb-8">
-        <a href="/creator/dashboard" className="cc-link text-sm inline-flex gap-2 items-center">
-          <ArrowLeft size={15} />
-          Workspace
-        </a>
+        <Breadcrumb
+          items={[
+            { label: 'Home', href: '/' },
+            { label: 'Workspace', href: '/creator/dashboard' },
+            { label: 'My profile' },
+          ]}
+        />
         <p role="status" className="text-xs text-anjuman-ink-soft">
           {saved ? 'Draft saved in this tab' : 'Your profile'}
         </p>

@@ -1,6 +1,7 @@
-import { revalidateTag } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { markContractCompletedOrPendingPayout } from '@/lib/contract-lifecycle';
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 const url = z
@@ -103,11 +104,42 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       if (
         d.action === 'approve' &&
         (await tx.milestone.count({ where: { contractId: id, status: { not: 'approved' } } })) === 0
-      )
-        await tx.contract.update({ where: { id }, data: { status: 'completed' } });
+      ) {
+        // Final approval only closes the contract when no money is in flight.
+        // When escrow is funded or held, the contract moves to
+        // 'pending_payout' and waits for the release webhook to close it.
+        // Today, escrowState is always 'pending' so this preserves the
+        // existing behavior. The day escrow lands, the gate activates
+        // without further code change here.
+        await markContractCompletedOrPendingPayout(
+          {
+            contractId: id,
+            escrowState: contract.escrowState as
+              | 'pending'
+              | 'funded'
+              | 'held'
+              | 'released'
+              | 'refunded',
+          },
+          tx,
+        );
+      }
     }
     return { ok: true, status: 200 };
   });
-  if ('ok' in result) revalidateTag('discovery');
+  if ('ok' in result) {
+    revalidateTag('discovery');
+    // Invalidate the contract pages for both sides so the new milestone
+    // status / submission / review state shows up on next render. Without
+    // this, Next.js serves the cached page and the brand keeps seeing the
+    // old "Awaiting submission" state even though the creator has
+    // already submitted.
+    revalidatePath(`/brand/contracts/${id}`);
+    revalidatePath(`/creator/contracts/${id}`);
+    revalidatePath('/brand/contracts');
+    revalidatePath('/creator/contracts');
+    revalidatePath(`/brand/dashboard`);
+    revalidatePath(`/creator/dashboard`);
+  }
   return NextResponse.json(result, { status: result.status });
 }

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/lib/db';
 import { auth } from '@/lib/auth';
+import { enforceRate } from '@/lib/rate-limit';
 
 const deliverableSchema = z.object({
   type: z.enum(['post', 'story', 'reel', 'youtube_long', 'youtube_short']),
@@ -31,6 +32,13 @@ export async function POST(req: Request) {
   if (session.user.role !== 'brand') {
     return NextResponse.json({ error: 'Not a brand account' }, { status: 403 });
   }
+  // 10 campaigns per hour per brand is plenty for normal operation.
+  const rateCheck = enforceRate(
+    req,
+    { scope: 'campaigns.create', limit: 10, windowMs: 60 * 60 * 1000 },
+    session.user.id,
+  );
+  if (!rateCheck.ok) return rateCheck.response;
 
   let body: unknown;
   try {

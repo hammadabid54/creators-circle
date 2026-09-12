@@ -1,70 +1,98 @@
 import { SyncButton } from './sync-button';
+import { PublishButton } from './publish-button';
 import { CreatorAnalytics } from '@/components/creator/analytics';
 import { getMetricHistory } from '@/lib/creator-metrics';
 import Image from 'next/image';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
-import { ArrowLeft, ArrowUpRight, BadgeCheck, ImageIcon, MapPin } from 'lucide-react';
+import { notFound, redirect } from 'next/navigation';
+import { ArrowUpRight, BadgeCheck, ImageIcon, MapPin } from 'lucide-react';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { Breadcrumb } from '@/components/ui/breadcrumb';
 import { parseList } from '@/lib/creators';
 import { Avatar } from '@/components/ui/avatar';
 import { SiteFooter } from '@/components/landing/site-footer';
 import { formatNumber, formatPKR } from '@/lib/utils';
+import { RatingSummary } from '@/components/reviews/rating-summary';
+import { ReviewList } from '@/components/reviews/review-list';
+import { getAggregateRating, getReviewsForUser } from '@/lib/reviews';
+
+// Look up a creator by either their public slug ("sara-hassan") or,
+// as a fallback, their user id. Returns the full creator profile with
+// all related data.
+const FULL_CREATOR_INCLUDE = {
+  creatorProfile: {
+    include: {
+      socialAccounts: true,
+      rateCard: true,
+      portfolio: { orderBy: { createdAt: 'desc' as const } },
+      brandCollabs: { orderBy: { year: 'desc' as const } },
+      audience: true,
+    },
+  },
+};
+
+async function findCreator(identifier: string) {
+  // Try the slug first.
+  const bySlug = await db.user.findFirst({
+    where: { creatorProfile: { slug: identifier } },
+    include: FULL_CREATOR_INCLUDE,
+  });
+  if (bySlug) return bySlug;
+
+  // Fall back to user id (back-compat for old /creators/<cuid> links).
+  const byId = await db.user.findUnique({
+    where: { id: identifier },
+    include: FULL_CREATOR_INCLUDE,
+  });
+  return byId;
+}
+
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const user = await db.user.findUnique({
-    where: { id },
-    select: {
-      name: true,
-      creatorProfile: {
-        select: { bio: true, socialAccounts: { select: { connectionState: true } } },
-      },
-    },
-  });
+  const user = await findCreator(id);
+  if (!user?.creatorProfile) {
+    return { title: 'Creator | Kollabo' };
+  }
+  const profile = user.creatorProfile;
+  const canonical = '/creators/' + (profile.slug || user.id);
   return {
-    title: user?.name ? user.name + ' | Creators Circle' : 'Creator | Creators Circle',
-    alternates: { canonical: '/creators/' + id },
+    title: user?.name ? user.name + ' | Kollabo' : 'Creator | Kollabo',
+    alternates: { canonical },
     robots: {
       index:
         !!user?.name &&
-        (user.creatorProfile?.bio?.trim().length || 0) >= 40 &&
-        !!user.creatorProfile?.socialAccounts.length &&
-        !user.creatorProfile?.socialAccounts.some((s) => s.connectionState === 'dev_mock'),
+        (profile.bio?.trim().length || 0) >= 40 &&
+        !!profile.socialAccounts.length &&
+        !profile.socialAccounts.some((s) => s.connectionState === 'dev_mock'),
       follow: true,
     },
     openGraph: {
-      title: (user?.name || 'Creator') + ' | Creators Circle',
-      description: user?.creatorProfile?.bio || 'Explore this creator?s public profile.',
-      url: '/creators/' + id,
+      title: (user?.name || 'Creator') + ' | Kollabo',
+      description: profile.bio || 'Explore this creator?s public profile.',
+      url: canonical,
     },
   };
 }
 export default async function CreatorProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [user, session] = await Promise.all([
-    db.user.findUnique({
-      where: { id },
-      include: {
-        creatorProfile: {
-          include: {
-            socialAccounts: true,
-            rateCard: true,
-            portfolio: { orderBy: { createdAt: 'desc' } },
-            brandCollabs: { orderBy: { year: 'desc' } },
-            audience: true,
-          },
-        },
-      },
-    }),
-    auth(),
-  ]);
+  const [user, session] = await Promise.all([findCreator(id), auth()]);
   if (!user?.creatorProfile) notFound();
   const profile = user.creatorProfile;
+
+  // If someone hit the userId URL but we have a slug, send them to the slug.
+  if (profile.slug && id !== profile.slug) {
+    redirect('/creators/' + profile.slug);
+  }
+
   const history = await getMetricHistory(profile.id);
-  const owner = session?.user?.id === id;
+  const owner = session?.user?.id === user.id;
   const demo = profile.socialAccounts.some((s) => s.connectionState === 'dev_mock');
   const niches = parseList(profile.niches);
+  const [reviewAggregate, reviewsForProfile] = await Promise.all([
+    getAggregateRating(user.id),
+    getReviewsForUser(user.id, 5),
+  ]);
   const rates = [
     { label: 'Sponsored post', price: profile.rateCard?.postRate },
     { label: 'Story', price: profile.rateCard?.storyRate },
@@ -72,19 +100,45 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
     { label: 'YouTube video', price: profile.rateCard?.youtubeLongRate },
     { label: 'YouTube Short', price: profile.rateCard?.youtubeShortRate },
   ].filter((r): r is { label: string; price: number } => typeof r.price === 'number');
-  const action = owner ? '/creator/onboarding' : `/brand/campaigns/new?invite=${id}`;
+
+  // The "Post a campaign" CTA needs the user id (not the slug) so the
+  // invite logic on the server can resolve the creator to invite.
+  const action = owner
+    ? '/creator/onboarding'
+    : `/brand/campaigns/new?invite=${user.id}`;
   return (
     <>
       <main className="cc-container pt-7 md:pt-10 pb-24 md:pb-6">
-        <Link
-          href="/creators"
-          className="inline-flex items-center gap-2 text-sm text-anjuman-ink-soft mb-8"
-        >
-          <ArrowLeft size={15} />
-          All creators
-        </Link>
-        <div className="grid lg:grid-cols-[1fr_340px] gap-10 lg:gap-14">
+        <Breadcrumb
+          items={[
+            { label: 'Home', href: '/' },
+            { label: 'Discover', href: '/creators' },
+            { label: user.name || 'Creator' },
+          ]}
+        />
+        <div className="grid lg:grid-cols-[1fr_340px] gap-10 lg:gap-14 mt-6">
           <div className="min-w-0">
+            {owner && !profile.published && (
+              <div
+                data-testid="unpublished-banner"
+                className="cc-panel p-4 mb-6 border-2 border-anjuman-purple/30 bg-[#faf5f9]"
+              >
+                <p className="text-xs text-anjuman-purple uppercase tracking-wider font-semibold mb-1">
+                  Your profile is in progress
+                </p>
+                <p className="text-sm">
+                  Brands can still see this page, but your profile will not
+                  show up in search results until you publish it. You can
+                  publish at any completeness level — even now.
+                </p>
+                <PublishButton published={false} />
+              </div>
+            )}
+            {!owner && !profile.published && (
+              <div className="cc-panel p-3 mb-6 border border-anjuman-line bg-[#faf8f5] text-sm text-anjuman-ink-soft">
+                This creator is still building their profile.
+              </div>
+            )}
             <div className="flex items-center gap-5">
               <Avatar name={user.name || 'Creator'} src={user.image || undefined} size="2xl" />
               <div>
@@ -121,12 +175,20 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
                 </span>
               ))}
             </div>
+            {reviewAggregate.count > 0 && (
+              <div className="mt-5">
+                <RatingSummary avg={reviewAggregate.avg} count={reviewAggregate.count} size="md" />
+              </div>
+            )}
             <nav
               aria-label="Profile sections"
               className="flex flex-wrap gap-5 text-sm border-b border-anjuman-line mt-9 mb-8 pb-4"
             >
               <a href="#work" className="cc-link">
                 Selected work
+              </a>
+              <a href="#reviews">
+                Reviews{reviewAggregate.count > 0 ? ' (' + reviewAggregate.count + ')' : ''}
               </a>
               <a href="#performance">Performance</a>
               <a href="#audience">Platforms</a>
@@ -192,6 +254,36 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
                   )}
                 </div>
               )}
+            </section>
+            <section id="reviews" className="mt-12 scroll-mt-20">
+              <div className="flex items-center justify-between mb-5">
+                <h2 className="text-2xl font-semibold">What brands say.</h2>
+                {reviewAggregate.count > 0 && (
+                  <span className="text-xs text-anjuman-ink-soft">
+                    {reviewAggregate.count} review{reviewAggregate.count === 1 ? '' : 's'}
+                  </span>
+                )}
+              </div>
+              <div className="cc-panel p-5 md:p-6">
+                <ReviewList
+                  reviews={reviewsForProfile.map((r) => ({
+                    id: r.id,
+                    rating: r.rating,
+                    body: r.body,
+                    createdAt: r.createdAt.toISOString(),
+                    reviewer: {
+                      name: r.reviewer.name,
+                      brandProfile: r.reviewer.brandProfile
+                        ? { company: r.reviewer.brandProfile.company }
+                        : null,
+                      creatorProfile: r.reviewer.creatorProfile
+                        ? { slug: r.reviewer.creatorProfile.slug }
+                        : null,
+                    },
+                  }))}
+                  emptyMessage="No brand reviews yet. Reviews appear after a contract's first milestone is approved."
+                />
+              </div>
             </section>
             <CreatorAnalytics
               history={history}
@@ -313,6 +405,30 @@ export default async function CreatorProfilePage({ params }: { params: Promise<{
                 {owner ? 'Edit your profile' : 'Post a campaign'}
                 <ArrowUpRight size={17} />
               </Link>
+              {!owner && session?.user?.role === 'brand' && (
+                <Link
+                  href={'/brand/invite?creatorId=' + user.id}
+                  className="cc-button cc-button-secondary w-full mt-3"
+                  data-testid="invite-to-existing-button"
+                >
+                  Invite to one of your campaigns
+                </Link>
+              )}
+              {owner && (
+                <Link
+                  href={'/kit/' + (profile.slug || user.id)}
+                  className="cc-button cc-button-secondary w-full mt-3"
+                  data-testid="share-kit-link"
+                  target="_blank"
+                >
+                  View your public kit
+                </Link>
+              )}
+              {owner && profile.published && (
+                <div className="mt-3">
+                  <PublishButton published={true} />
+                </div>
+              )}
               <p className="cc-subtle text-center text-xs mt-4">
                 {owner
                   ? 'Keep your work and services up to date.'

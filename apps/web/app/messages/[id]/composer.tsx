@@ -2,11 +2,13 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Send, Loader2 } from 'lucide-react';
+import { useToast } from '@/components/ui/toast';
 export function Composer({ threadId }: { threadId: string }) {
   const [body, setBody] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
+  const toast = useToast();
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
@@ -20,12 +22,14 @@ export function Composer({ threadId }: { threadId: string }) {
       const result = await res.json();
       if (!res.ok) {
         setError(result.error || 'Message not sent. Try again.');
+        toast.danger(result.error || 'Message not sent.');
         return;
       }
       setBody('');
       router.refresh();
     } catch {
       setError('Connection lost. Your message is still here. Try again.');
+      toast.danger('Connection lost. Your message is still here.');
     } finally {
       setBusy(false);
     }
@@ -41,7 +45,7 @@ export function Composer({ threadId }: { threadId: string }) {
           maxLength={2000}
           required
           className="cc-field mt-2"
-          placeholder="Share an idea or ask a question…"
+          placeholder="Share an idea, ask a question, or send a delivery link…"
         />
       </label>
       {error && (

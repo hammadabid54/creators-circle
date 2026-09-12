@@ -3,8 +3,9 @@ import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Loader2, Plus, X, MapPin, Send } from 'lucide-react';
+import { Loader2, Plus, X, MapPin, Send } from 'lucide-react';
 import { CITY_OPTIONS, NICHE_OPTIONS, PLATFORM_OPTIONS } from '@/lib/profile-data';
+import { Breadcrumb } from '@/components/ui/breadcrumb';
 import { z } from 'zod';
 const schema = z.object({
   title: z.string(),
@@ -62,7 +63,7 @@ export function CampaignForm({
   const [error, setError] = useState('');
   const [ready, setReady] = useState(false);
   const [saved, setSaved] = useState(false);
-  const key = session?.user?.id ? 'creators-circle:campaign-draft:' + session.user.id : null;
+  const key = session?.user?.id ? 'kollabo:campaign-draft:' + session.user.id : null;
   useEffect(() => {
     if (!key) return;
     try {
@@ -135,12 +136,16 @@ export function CampaignForm({
   }
   return (
     <div className="cc-container py-9 md:py-12">
-      <div className="flex justify-between gap-4 mb-8">
-        <Link className="cc-link text-sm inline-flex items-center gap-2" href="/brand/campaigns">
-          <ArrowLeft size={15} />
-          Campaigns
-        </Link>
-        <p role="status" className="cc-subtle text-xs">
+      <div className="flex justify-between items-start gap-4 mb-6">
+        <Breadcrumb
+          items={[
+            { label: 'Home', href: '/' },
+            { label: 'Workspace', href: '/brand/dashboard' },
+            { label: 'Campaigns', href: '/brand/campaigns' },
+            { label: 'New campaign' },
+          ]}
+        />
+        <p role="status" className="cc-subtle text-xs shrink-0 pt-1">
           {saved ? 'Draft saved in this tab' : 'New campaign'}
         </p>
       </div>

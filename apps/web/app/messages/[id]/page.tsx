@@ -1,10 +1,12 @@
 import { notFound, redirect } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, MessageSquare } from 'lucide-react';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { DeliveryForm } from './delivery-form';
 import { Composer } from './composer';
+import { WorkflowStepper } from '@/components/contracts/workflow-stepper';
+import { isContractStatus } from '@/lib/contracts';
 
 export default async function Conversation({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -80,34 +82,39 @@ export default async function Conversation({ params }: { params: Promise<{ id: s
         : creator?.name || 'Creator';
 
       return (
-        <main className="cc-container max-w-4xl py-8 md:py-12">
-          <Link href="/messages" className="cc-link text-sm inline-flex gap-2 items-center mb-6">
-            <ArrowLeft size={15} />
-            All conversations
+        <div className="space-y-4">
+          <Link
+            href="/messages"
+            className="lg:hidden inline-flex items-center gap-1 cc-link text-xs"
+          >
+            <ArrowLeft size={14} /> All conversations
           </Link>
-          <h1 className="cc-title mb-3">{campaign?.title || 'Direct conversation'}</h1>
-          <p className="cc-subtle mb-6">
-            Conversation with {appName}{' '}
-            <span className="ml-2 inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-anjuman-yellow/25 text-anjuman-ink">
-              Pre-agreement
-            </span>
-          </p>
-          <div className="cc-panel p-5 md:p-7 mb-6">
+          <header>
+            <p className="cc-eyebrow mb-2">Conversation</p>
+            <h1 className="cc-title mb-2">{campaign?.title || 'Direct conversation'}</h1>
+            <p className="cc-subtle mb-3 flex items-center gap-2 flex-wrap">
+              <MessageSquare size={14} /> With {appName}
+              <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-anjuman-yellow/25 text-anjuman-ink">
+                Pre-agreement
+              </span>
+            </p>
+          </header>
+          <div className="cc-panel p-5 md:p-6">
             <p className="cc-eyebrow mb-2">Before the deal</p>
-            <h2 className="text-2xl font-semibold">Talk it through first</h2>
-            <p className="cc-subtle mt-2">
+            <h2 className="text-xl font-semibold">Talk it through first</h2>
+            <p className="cc-subtle mt-2 text-sm">
               Messages here happen before a contract exists. When you both agree on scope and
               rate, the brand can accept the proposal and a contract with milestones is created.
               After that, deliverables and approvals live in the collaboration view.
             </p>
           </div>
           <div className="cc-panel overflow-hidden">
-            <div className="p-5 md:p-7 border-b border-anjuman-line">
-              <p className="cc-eyebrow mb-2">Your conversation</p>
-              <h2 className="text-2xl font-semibold">Messages with {appName}</h2>
-              <p className="cc-subtle mt-2">{campaign?.title}</p>
+            <div className="p-5 md:p-6 border-b border-anjuman-line">
+              <p className="cc-eyebrow mb-1">Your conversation</p>
+              <h2 className="text-xl font-semibold">Messages with {appName}</h2>
+              <p className="cc-subtle mt-1 text-sm">{campaign?.title}</p>
             </div>
-            <div className="p-5 md:p-7 min-h-[260px] space-y-5">
+            <div className="p-5 md:p-6 min-h-[260px] space-y-5">
               {appMessages.length ? (
                 appMessages.map((m) => (
                   <div
@@ -150,7 +157,7 @@ export default async function Conversation({ params }: { params: Promise<{ id: s
             </div>
             <Composer threadId={id} />
           </div>
-        </main>
+        </div>
       );
     }
     notFound();
@@ -160,18 +167,29 @@ export default async function Conversation({ params }: { params: Promise<{ id: s
     contract.brandId === session.user.id
       ? contract.creator.name || 'Creator'
       : contract.brand.brandProfile?.company || contract.brand.name || 'Brand';
+  const status = isContractStatus(contract.status) ? contract.status : 'active';
   return (
-    <main className="cc-container max-w-4xl py-8 md:py-12">
-      <Link href="/messages" className="cc-link text-sm inline-flex gap-2 items-center mb-6">
-        <ArrowLeft size={15} />
-        All conversations
+    <div className="space-y-4">
+      <Link
+        href="/messages"
+        className="lg:hidden inline-flex items-center gap-1 cc-link text-xs"
+      >
+        <ArrowLeft size={14} /> All conversations
       </Link>
-      <h1 className="cc-title mb-3">{contract.campaign?.title || 'Your collaboration'}</h1>
-      <p className="cc-subtle mb-6">Working with {name}</p>
-      <section className="cc-panel p-5 md:p-7 mb-6" aria-label="Delivery workspace">
+      <header>
+        <p className="cc-eyebrow mb-2">Conversation</p>
+        <h1 className="cc-title mb-2">
+          {contract.campaign?.title || 'Your collaboration'}
+        </h1>
+        <p className="cc-subtle mb-3 flex items-center gap-2">
+          <MessageSquare size={14} /> Working with {name}
+        </p>
+        <WorkflowStepper current={status} />
+      </header>
+      <section className="cc-panel p-5 md:p-6" aria-label="Delivery workspace">
         <p className="cc-eyebrow mb-2">From idea to finished work</p>
-        <h2 className="text-2xl font-semibold">Work & approvals</h2>
-        <p className="cc-subtle mt-2">
+        <h2 className="text-xl font-semibold">Work & approvals</h2>
+        <p className="cc-subtle mt-2 text-sm">
           {contract.status === 'completed'
             ? 'All deliverables approved. This collaboration is complete.'
             : 'Share work, review each version, and keep feedback together.'}
@@ -252,12 +270,12 @@ export default async function Conversation({ params }: { params: Promise<{ id: s
         ))}
       </section>
       <div className="cc-panel overflow-hidden">
-        <div className="p-5 md:p-7 border-b border-anjuman-line">
-          <p className="cc-eyebrow mb-2">Your collaboration</p>
-          <h2 className="text-2xl font-semibold">Messages with {name}</h2>
-          <p className="cc-subtle mt-2">{contract.campaign?.title || 'Direct collaboration'}</p>
+        <div className="p-5 md:p-6 border-b border-anjuman-line">
+          <p className="cc-eyebrow mb-1">Your collaboration</p>
+          <h2 className="text-xl font-semibold">Messages with {name}</h2>
+          <p className="cc-subtle mt-1 text-sm">{contract.campaign?.title || 'Direct collaboration'}</p>
         </div>
-        <div className="p-5 md:p-7 min-h-[260px] space-y-5">
+        <div className="p-5 md:p-6 min-h-[260px] space-y-5">
           {contractMessages.length ? (
             contractMessages.map((m) => (
               <div
@@ -300,7 +318,7 @@ export default async function Conversation({ params }: { params: Promise<{ id: s
         </div>
         <Composer threadId={id} />
       </div>
-    </main>
+    </div>
   );
 }
 

@@ -16,7 +16,7 @@ export function SiteFooter() {
           </nav>
         </div>
         <div className="mt-9 pt-6 border-t border-anjuman-line flex flex-wrap gap-3 justify-between text-xs text-anjuman-ink-soft">
-          <span>© {new Date().getFullYear()} Creators Circle</span>
+          <span>© {new Date().getFullYear()} Kollabo</span>
           <span>Made for Pakistan&apos;s creative community.</span>
         </div>
       </div>

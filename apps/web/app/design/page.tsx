@@ -90,7 +90,7 @@ export default function DesignSystemPage() {
             <Wordmark size="xl" />
           </div>
           <h1 className="font-display text-4xl md:text-6xl font-bold tracking-tight mb-6 leading-[1.05]">
-            Creators Circle{' '}
+            Kollabo{' '}
             <span className="bg-gradient-to-r from-[#FF006E] via-[#8338EC] to-[#00D9FF] bg-clip-text text-transparent">
               design system
             </span>
@@ -110,7 +110,7 @@ export default function DesignSystemPage() {
       <Section className="pt-0">
         <SectionHeader
           title="Brand mark"
-          subtitle="The Creators Circle burst + wordmark, in 4 sizes."
+          subtitle="The Kollabo burst + wordmark, in 4 sizes."
         />
         <div className="flex flex-wrap items-end gap-10">
           <div className="flex flex-col items-center gap-2">
@@ -280,7 +280,7 @@ export default function DesignSystemPage() {
             <div className="text-xs text-anjuman-ink-soft uppercase tracking-wider">
               Display 4xl
             </div>
-            <div className="font-display text-4xl font-bold">Creators Circle of creators</div>
+            <div className="font-display text-4xl font-bold">A circle of creators</div>
           </div>
           <div>
             <div className="text-xs text-anjuman-ink-soft uppercase tracking-wider">
@@ -315,7 +315,7 @@ export default function DesignSystemPage() {
           <Wordmark size="sm" />
         </div>
         <p>
-          Creators Circle design system · v0.1 ·{' '}
+          Kollabo design system · v0.1 ·{' '}
           <Link href="/plan" className="hover:text-anjuman-ink">
             Read PLAN.md
           </Link>

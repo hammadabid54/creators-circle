@@ -1,10 +1,12 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useSession, signOut } from 'next-auth/react';
+import { useSession } from 'next-auth/react';
 import { useState } from 'react';
-import { Menu, X, LogOut } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 import { Logo } from '@/components/brand/logo';
+import { UserMenu } from '@/components/user-menu';
+import { NotificationBell } from '@/components/notification-bell';
 
 export function SiteHeader() {
   const pathname = usePathname();
@@ -57,20 +59,23 @@ export function SiteHeader() {
         </nav>
         <div className="flex items-center gap-3">
           {session ? (
-            <button
-              type="button"
-              onClick={() => signOut({ callbackUrl: '/' })}
-              className="hidden lg:flex items-center gap-2 text-sm text-anjuman-ink-soft"
-            >
-              <LogOut size={16} /> Sign out
-            </button>
+            <>
+              <Link
+                href={dashboard}
+                className="hidden sm:inline-flex items-center gap-2 text-sm font-medium px-3 py-2 rounded-full border border-anjuman-line bg-white hover:border-anjuman-purple/40"
+              >
+                My dashboard
+              </Link>
+              <NotificationBell />
+              <UserMenu />
+            </>
           ) : (
             <>
               <Link href="/signin" className="hidden sm:inline text-sm font-medium">
                 Sign in
               </Link>
               <Link
-                href="/signin?callbackUrl=/onboarding/role"
+                href="/onboarding/role?intent=signup"
                 className="cc-button hidden sm:inline-flex"
               >
                 Join the circle
@@ -104,13 +109,23 @@ export function SiteHeader() {
               {item.label}
             </Link>
           ))}
-          {session ? (
-            <button
-              className="py-3 text-left text-sm"
-              onClick={() => signOut({ callbackUrl: '/' })}
+          {session && (
+            <Link
+              onClick={() => setOpen(false)}
+              href={dashboard}
+              className="py-3 text-sm border-b border-anjuman-line font-semibold text-anjuman-purple"
             >
-              Sign out
-            </button>
+              My dashboard
+            </Link>
+          )}
+          {session ? (
+            <Link
+              href="/account"
+              onClick={() => setOpen(false)}
+              className="py-3 text-sm border-b border-anjuman-line"
+            >
+              Account settings
+            </Link>
           ) : (
             <div className="flex gap-3 pt-4">
               <Link
@@ -122,7 +137,7 @@ export function SiteHeader() {
               </Link>
               <Link
                 onClick={() => setOpen(false)}
-                href="/signin?callbackUrl=/onboarding/role"
+                href="/onboarding/role?intent=signup"
                 className="cc-button flex-1"
               >
                 Join the circle

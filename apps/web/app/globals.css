@@ -33,15 +33,21 @@
   --color-anjuman-cyan: #356b68;
   --color-anjuman-yellow: #e7c993;
   --color-anjuman-green: #287052;
+  --color-anjuman-amber: #a86a1f;
+  --color-anjuman-red: #a8423b;
   --color-anjuman-ink: #262126;
   --color-anjuman-ink-soft: #706670;
   --color-anjuman-bg: #faf8f5;
+  --color-anjuman-hover: #f5f1ec;
   --color-anjuman-line: #e7e1de;
   --color-anjuman-line-soft: #f2eeeb;
   --color-anjuman-tint-pink: #f4e9ed;
   --color-anjuman-tint-purple: #f0e9ef;
   --color-anjuman-tint-cyan: #eaf0ed;
   --color-anjuman-tint-yellow: #f5efdf;
+  --color-anjuman-tint-green: #d9ebde;
+  --color-anjuman-tint-amber: #f5e6cf;
+  --color-anjuman-tint-red: #f5dcd8;
   --font-sans: 'Circle Sans', 'Segoe UI', Arial, sans-serif;
   --font-display: 'Circle Sans', 'Segoe UI', Arial, sans-serif;
   --radius-card: 12px;
@@ -203,6 +209,160 @@
   .anj-card-lift:hover {
     border-color: #baa3b2;
     box-shadow: 0 4px 14px #30212c08;
+  }
+
+  /* ── Status pills ─────────────────────────────────────────── */
+  .cc-status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    line-height: 1.4;
+    white-space: nowrap;
+  }
+  .cc-status-pill-success {
+    background: var(--color-anjuman-tint-green);
+    color: var(--color-anjuman-green);
+  }
+  .cc-status-pill-warning {
+    background: var(--color-anjuman-tint-amber);
+    color: var(--color-anjuman-amber);
+  }
+  .cc-status-pill-danger {
+    background: var(--color-anjuman-tint-red);
+    color: var(--color-anjuman-red);
+  }
+  .cc-status-pill-info {
+    background: var(--color-anjuman-tint-cyan);
+    color: var(--color-anjuman-cyan);
+  }
+  .cc-status-pill-neutral {
+    background: #f2eeeb;
+    color: var(--color-anjuman-ink-soft);
+  }
+  .cc-status-pill-brand {
+    background: var(--color-anjuman-tint-purple);
+    color: var(--color-anjuman-purple);
+  }
+
+  /* ── Row hover surface ─────────────────────────────────────── */
+  .cc-row-hover {
+    transition: background-color 0.12s;
+  }
+  .cc-row-hover:hover {
+    background: var(--color-anjuman-hover);
+  }
+
+  /* ── Toast container ───────────────────────────────────────── */
+  .cc-toast-stack {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    display: flex;
+    flex-direction: column-reverse;
+    gap: 8px;
+    pointer-events: none;
+    width: min(420px, calc(100% - 32px));
+  }
+  .cc-toast {
+    pointer-events: auto;
+    background: #262126;
+    color: #fff;
+    border-radius: 10px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+    font-size: 14px;
+    line-height: 1.4;
+    animation: cc-toast-in 0.2s ease-out;
+  }
+  .cc-toast-success {
+    border-left: 3px solid var(--color-anjuman-green);
+  }
+  .cc-toast-warning {
+    border-left: 3px solid var(--color-anjuman-amber);
+  }
+  .cc-toast-danger {
+    border-left: 3px solid var(--color-anjuman-red);
+  }
+  .cc-toast-info {
+    border-left: 3px solid var(--color-anjuman-cyan);
+  }
+  @keyframes cc-toast-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* ── Glossary tooltip ──────────────────────────────────────── */
+  .cc-glossary-trigger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 1px solid var(--color-anjuman-line);
+    color: var(--color-anjuman-ink-soft);
+    font-size: 9px;
+    font-weight: 700;
+    margin-left: 4px;
+    cursor: help;
+    position: relative;
+    vertical-align: middle;
+  }
+  .cc-glossary-trigger:hover,
+  .cc-glossary-trigger:focus-visible {
+    color: var(--color-anjuman-purple);
+    border-color: var(--color-anjuman-purple);
+  }
+  .cc-glossary-trigger[data-open='true'] .cc-glossary-popover {
+    display: block;
+  }
+  .cc-glossary-popover {
+    display: none;
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: #262126;
+    color: #fff;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: 0;
+    line-height: 1.4;
+    width: max-content;
+    max-width: 240px;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.18);
+    z-index: 50;
+    white-space: normal;
+    text-align: left;
+  }
+  .cc-glossary-popover::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 5px solid transparent;
+    border-top-color: #262126;
   }
 }
 main .rounded-3xl {

@@ -27,7 +27,7 @@ export default function CulturalMotifComparisonPage() {
           repeated everywhere.
         </h1>
         <p className="text-anjuman-ink-soft max-w-2xl text-lg mb-2">
-          Three options for a small visual signature that makes Creators Circle feel made for
+          Three options for a small visual signature that makes Kollabo feel made for
           Pakistan, not generic global SaaS. Each option below is shown the way it would actually
           live in the product — section dividers, empty states, button accents.
         </p>
@@ -114,7 +114,7 @@ export default function CulturalMotifComparisonPage() {
         letter="C"
         title="Gathering"
         subtitle="Product name, visualized"
-        description="Five abstract figures in a circle, each in a brand color. A visual expression of Creators Circle as a community. Tells the product story without text. Most meaningful — but most figurative, which means it's the hardest to use everywhere."
+        description="Five abstract figures in a circle, each in a brand color. A visual expression of Kollabo as a community. Tells the product story without text. Most meaningful — but most figurative, which means it's the hardest to use everywhere."
         pros={[
           'Tells the product story (anjuman = gathering)',
           'Most distinctive at a glance',

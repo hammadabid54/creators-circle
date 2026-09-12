@@ -35,7 +35,7 @@ export function HowItWorks() {
   return (
     <Section id="how" className="pt-0">
       <SectionHeader
-        title="How Creators Circle works"
+        title="How Kollabo works"
         subtitle="Built for both sides of the marketplace."
         align="center"
       />

@@ -4,6 +4,8 @@ import { ArrowUpRight, FileText } from 'lucide-react';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { WorkspaceNav } from '@/components/workspace-nav';
+import { Breadcrumb } from '@/components/ui/breadcrumb';
+import { EmptyState } from '@/components/ui/empty-state';
 import { formatPKRCompact } from '@/lib/utils';
 export default async function BrandCampaignsPage() {
   const session = await auth();
@@ -21,7 +23,14 @@ export default async function BrandCampaignsPage() {
           <WorkspaceNav role="brand" active="campaigns" />
         </aside>
         <div className="min-w-0">
-          <div className="flex flex-wrap justify-between gap-4 items-end mb-8">
+          <Breadcrumb
+            items={[
+              { label: 'Home', href: '/' },
+              { label: 'Workspace', href: '/brand/dashboard' },
+              { label: 'Campaigns' },
+            ]}
+          />
+          <div className="flex flex-wrap justify-between gap-4 items-end mb-8 mt-6">
             <div>
               <p className="cc-eyebrow mb-3">Your ideas, in motion</p>
               <h1 className="cc-title">Campaigns</h1>
@@ -57,16 +66,13 @@ export default async function BrandCampaignsPage() {
               ))}
             </div>
           ) : (
-            <div className="cc-panel p-12 text-center">
-              <FileText className="mx-auto text-anjuman-purple mb-4" size={28} />
-              <h2 className="text-2xl font-semibold">What will you create first?</h2>
-              <p className="cc-subtle mt-3 mb-6">
-                Share a brief and give creators a reason to get involved.
-              </p>
-              <Link href="/brand/campaigns/new" className="cc-button cc-button-secondary">
-                Write a campaign brief
-              </Link>
-            </div>
+            <EmptyState
+              variant="campaigns"
+              title="What will you create first?"
+              body="Share a brief and give creators a reason to get involved. New campaigns usually see their first application within 48 hours."
+              cta={{ href: '/brand/campaigns/new', label: 'Write a campaign brief' }}
+              secondaryCta={{ href: '/creators', label: 'Browse creators to invite directly →' }}
+            />
           )}
         </div>
       </div>

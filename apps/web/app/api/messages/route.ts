@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { enforceRate } from '@/lib/rate-limit';
 
 const schema = z.object({
   threadId: z.string().min(1),
@@ -22,6 +23,15 @@ export async function POST(req: Request) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Not signed in' }, { status: 401 });
   }
+  // 60 messages per hour per user is generous for normal conversation
+  // and stops a single account from flooding the inbox. Per-IP layer
+  // catches the case where one device runs many accounts.
+  const rateCheck = enforceRate(
+    req,
+    { scope: 'messages.send', limit: 60, windowMs: 60 * 60 * 1000 },
+    session.user.id,
+  );
+  if (!rateCheck.ok) return rateCheck.response;
 
   const parsed = schema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {

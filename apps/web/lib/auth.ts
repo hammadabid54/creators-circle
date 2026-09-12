@@ -56,10 +56,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (token.id) {
         const current = await db.user.findUnique({
           where: { id: token.id as string },
-          select: { role: true, name: true },
+          select: { role: true, name: true, sessionVersion: true },
         });
         token.role = current?.role ?? null;
         token.name = current?.name ?? null;
+        // Stamp the live sessionVersion so the session callback can detect
+        // a bump (ban, KYC reject, support reset) and reject the session.
+        token.sessionVersion = current?.sessionVersion ?? 0;
       }
       return token;
     },
@@ -69,6 +72,20 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.role = (token.role as string | null) ?? null;
         session.user.phone = (token.phone as string | null) ?? null;
         session.user.name = (token.name as string | null) ?? null;
+      }
+      // Reject the session if the token's sessionVersion is stale. This is
+      // what makes sessionVersion a global, instant kill switch.
+      // Note: this only fires when auth() is called. Pages and API routes
+      // already call it; middleware uses auth.config.ts which is Edge-only
+      // and never queries the DB. The deeper revocation check happens here.
+      if (token.id && typeof token.sessionVersion === 'number') {
+        const current = await db.user.findUnique({
+          where: { id: token.id as string },
+          select: { sessionVersion: true },
+        });
+        if (!current || current.sessionVersion !== token.sessionVersion) {
+          return { ...session, user: undefined as unknown as typeof session.user };
+        }
       }
       return session;
     },

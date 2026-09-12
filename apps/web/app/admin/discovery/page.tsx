@@ -173,7 +173,7 @@ async function saveTaxon(form: FormData) {
   redirect('/admin/discovery?message=' + encodeURIComponent(message));
 }
 export const metadata = {
-  title: 'Discovery management | Creators Circle',
+  title: 'Discovery management | Kollabo',
   robots: { index: false, follow: false },
 };
 export default async function Admin({
@@ -393,7 +393,7 @@ export default async function Admin({
           .map((t) => (
             <Link
               key={t.id}
-              className="cc-button-secondary text-sm"
+              className="cc-button cc-button-secondary text-sm"
               href={'?category=' + encodeURIComponent(t.id)}
             >
               {t.label} · {t.id}

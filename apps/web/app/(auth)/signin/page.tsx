@@ -94,7 +94,7 @@ function SignInForm() {
               A community for independent creators and the brands who value their perspective.
             </p>
           </div>
-          <p className="text-sm text-[#dfc5d4]">Creators Circle · Pakistan</p>
+          <p className="text-sm text-[#dfc5d4]">Kollabo · Pakistan</p>
         </section>
         <section className="p-6 sm:p-10 lg:p-12 self-center">
           <Link

@@ -1,7 +1,18 @@
 import { NextResponse } from 'next/server';
 import { createOtp, emailKey, OtpLimitError } from '@/lib/otp';
 import { deliverEmailCode, emailDeliveryReady } from '@/lib/email-delivery';
+import { enforceRate } from '@/lib/rate-limit';
 export async function POST(req: Request) {
+  // Per-IP rate limit on the email sign-in endpoint so a bad actor can't
+  // burn Resend quota by rotating target addresses. The per-email limit
+  // is enforced below in createOtp.
+  const ipCheck = enforceRate(
+    req,
+    { scope: 'email.send.ip', limit: 20, windowMs: 60 * 60 * 1000 },
+    null,
+  );
+  if (!ipCheck.ok) return ipCheck.response;
+
   const body = await req.json().catch(() => null);
   let key: string;
   try {

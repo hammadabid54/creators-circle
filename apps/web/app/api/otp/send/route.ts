@@ -1,8 +1,20 @@
 ﻿import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { createOtp, normalizePhone, validPhone, OtpLimitError } from '@/lib/otp';
+import { enforceRate } from '@/lib/rate-limit';
 const schema = z.object({ phone: z.string().max(30) });
 export async function POST(req: Request) {
+  // Per-IP rate limit. This is the SMS-pumping protection: the per-phone
+  // limit below catches the same phone hammering us, but an attacker
+  // rotating phone numbers can otherwise burn the Twilio balance freely.
+  // 10/hour/IP is a reasonable ceiling for legitimate use.
+  const ipCheck = enforceRate(
+    req,
+    { scope: 'otp.send.ip', limit: 10, windowMs: 60 * 60 * 1000 },
+    null,
+  );
+  if (!ipCheck.ok) return ipCheck.response;
+
   const parsed = schema.safeParse(await req.json().catch(() => null));
   if (!parsed.success || !validPhone(normalizePhone(parsed.data.phone)))
     return NextResponse.json({ error: 'Enter a valid Pakistani mobile number.' }, { status: 400 });

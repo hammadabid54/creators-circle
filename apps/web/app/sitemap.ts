@@ -29,12 +29,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       user: { name: { not: null } },
       socialAccounts: { some: {}, none: { connectionState: 'dev_mock' } },
     },
-    select: { userId: true, bio: true, updatedAt: true, user: { select: { name: true } } },
+    select: { userId: true, slug: true, bio: true, updatedAt: true, user: { select: { name: true } } },
     take: 40000,
     orderBy: { userId: 'asc' },
   });
   for (const p of profiles)
     if ((p.bio?.trim().length || 0) >= 40 && (p.user.name?.trim().length || 0) > 1)
-      entries.push({ url: site + '/creators/' + p.userId, lastModified: p.updatedAt });
+      entries.push({
+        url: site + '/creators/' + (p.slug || p.userId),
+        lastModified: p.updatedAt,
+      });
   return entries;
 }

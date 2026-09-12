@@ -9,7 +9,7 @@ interface GatheringProps {
 /**
  * Motif C — Gathering.
  * Five abstract figures standing close in a circle, suggesting the
- * product name "Creators Circle" and its sense of community.
+ * product name "Kollabo" and its sense of community.
  * Used on empty states, on the 404 page, and as a load-state ornament.
  * Each figure is a head + shoulders silhouette in a brand color.
  */

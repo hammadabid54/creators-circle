@@ -22,14 +22,14 @@ export function FinalCTA() {
           <div className="inline-flex items-center gap-2 mb-5">
             <span className="w-1.5 h-1.5 rounded-full bg-anjuman-yellow" />
             <span className="text-[11px] font-semibold uppercase tracking-wider text-anjuman-yellow">
-              Creators Circle · Free to join
+              Kollabo · Free to join
             </span>
           </div>
           <h2 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-5 leading-[1.02]">
             Hire your next creator this week.
           </h2>
           <p className="text-lg opacity-80 mb-8 leading-relaxed">
-            800+ Pakistani brands are already on Creators Circle. Post a campaign, review proposals,
+            800+ Pakistani brands are already on Kollabo. Post a campaign, review proposals,
             pay in PKR through escrow.
           </p>
           <div className="flex flex-wrap items-center gap-3">

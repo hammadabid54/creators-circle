@@ -4,6 +4,7 @@ import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 
 import { NichePill } from '@/components/creator/niche-pill';
+import { Breadcrumb } from '@/components/ui/breadcrumb';
 import { ApplicationForm } from './form';
 
 import { formatPKRCompact } from '@/lib/utils';
@@ -33,7 +34,15 @@ export default async function CampaignDetailPage({ params }: { params: Promise<{
   return (
     <main className="min-h-screen bg-anjuman-bg">
       <div className="max-w-3xl mx-auto px-5 md:px-8 py-10">
-        <div className="bg-white border border-anjuman-line rounded-3xl p-8 mb-6">
+        <Breadcrumb
+          items={[
+            { label: 'Home', href: '/' },
+            { label: 'Workspace', href: '/creator/dashboard' },
+            { label: 'Opportunities', href: '/creator/campaigns' },
+            { label: campaign.title },
+          ]}
+        />
+        <div className="bg-white border border-anjuman-line rounded-3xl p-8 mb-6 mt-6">
           <div className="text-xs text-anjuman-ink-soft mb-1">Campaign by {company}</div>
           <h1 className="font-display text-2xl md:text-3xl font-bold mb-3">{campaign.title}</h1>
           <p className="text-anjuman-ink whitespace-pre-line mb-5">{campaign.brief}</p>

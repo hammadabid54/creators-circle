@@ -10,6 +10,7 @@ import {
 } from '@/lib/discovery-taxonomy';
 import { CreatorDirectory } from '@/components/creator/directory';
 import { SiteFooter } from '@/components/landing/site-footer';
+import { Breadcrumb } from '@/components/ui/breadcrumb';
 export const dynamic = 'force-dynamic';
 type Props = { searchParams: Promise<Record<string, string | string[] | undefined>> };
 export async function generateMetadata({ searchParams }: Props) {
@@ -18,7 +19,7 @@ export async function generateMetadata({ searchParams }: Props) {
     Object.entries(p).filter(([, v]) => typeof v === 'string') as [string, string][],
   );
   return {
-    title: 'Discover Pakistani creators | Creators Circle',
+    title: 'Discover Pakistani creators | Kollabo',
     description:
       'Search creator profiles by niche, city, language, platform and deliverable rates.',
     alternates: { canonical: '/creators' + (query.size ? '?' + query : '') },
@@ -61,7 +62,8 @@ export default async function CreatorsBrowsePage({ searchParams }: Props) {
   return (
     <>
       <main className="cc-container pt-9 pb-12">
-        <div className="mb-8">
+        <Breadcrumb items={[{ label: 'Home', href: '/' }, { label: 'Discover' }]} />
+        <div className="mb-8 mt-6">
           <p className="cc-eyebrow mb-3">Find your people</p>
           <h1 className="cc-title">Discover Pakistani creators.</h1>
           <p className="cc-subtle mt-3 max-w-2xl">
@@ -83,7 +85,7 @@ export default async function CreatorsBrowsePage({ searchParams }: Props) {
               {suggestTaxa(f.q, taxa).map((t) => (
                 <Link
                   key={t.id}
-                  className="cc-button-secondary"
+                  className="cc-button cc-button-secondary"
                   href={'/creators?' + new URLSearchParams({ [t.kind]: t.value }).toString()}
                 >
                   {t.label}

@@ -5,6 +5,7 @@ import { Avatar } from '@/components/ui/avatar';
 import { formatPKRCompact, formatNumber, cn } from '@/lib/utils';
 export interface CreatorCardData {
   id: string;
+  slug?: string | null;
   name: string;
   handle: string;
   city: string;
@@ -44,7 +45,7 @@ export function CreatorCard({
     <article
       className={cn('cc-panel overflow-hidden group flex flex-col anj-card-lift', className)}
     >
-      <Link href={'/creators/' + creator.id} className="block">
+      <Link href={'/creators/' + (creator.slug || creator.id)} className="block">
         {creator.cover ? (
           <div className="aspect-[1.7] bg-anjuman-line-soft overflow-hidden">
             <Image
@@ -117,7 +118,7 @@ export function CreatorCard({
         </div>
         <Link
           aria-label={'View ' + creator.name + ' profile'}
-          href={'/creators/' + creator.id}
+          href={'/creators/' + (creator.slug || creator.id)}
           className="w-10 h-10 rounded-full border border-anjuman-line flex items-center justify-center text-anjuman-purple hover:bg-anjuman-line-soft"
         >
           <ArrowUpRight size={18} />

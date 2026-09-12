@@ -37,6 +37,8 @@ dist/
 apps/web/check-user.cjs
 apps/web/check-socials.cjs
 apps/web/seed-brand.cjs
+apps/web/seed-invite-demo.js
+.tmp/
 
 # Logs
 *.log

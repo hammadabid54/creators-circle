@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { db } from '@/lib/db';
 import { auth } from '@/lib/auth';
+import { enforceRate } from '@/lib/rate-limit';
 
 const schema = z.object({
   campaignId: z.string().min(1),
@@ -18,6 +19,16 @@ export async function POST(req: Request) {
   if (session.user.role !== 'creator') {
     return NextResponse.json({ error: 'Not a creator account' }, { status: 403 });
   }
+  // 30 applications per hour per creator is generous. The duplicate
+  // (campaignId, creatorId) constraint already stops repeat applications
+  // to the same campaign; this stops repeat applications to *different*
+  // campaigns from a single account.
+  const rateCheck = enforceRate(
+    req,
+    { scope: 'applications.create', limit: 30, windowMs: 60 * 60 * 1000 },
+    session.user.id,
+  );
+  if (!rateCheck.ok) return rateCheck.response;
 
   const body = await req.json().catch(() => ({}));
   const parsed = schema.safeParse(body);

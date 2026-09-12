@@ -3,11 +3,16 @@ import { authConfig } from '@/lib/auth.config';
 const { auth } = NextAuth(authConfig);
 import { NextResponse } from 'next/server';
 
-const protectedPrefixes = ['/creator', '/brand', '/admin', '/onboarding', '/account', '/messages'];
+const protectedPrefixes = ['/creator', '/brand', '/admin', '/account', '/messages'];
+
+// /onboarding/role is intentionally public — it's the role-choice page
+// that gates signup. New users hit it before they have an account.
+const publicOnboardingPaths = new Set(['/onboarding/role']);
 
 export default auth((req) => {
   const { pathname } = req.nextUrl;
   const isProtected = protectedPrefixes.some((p) => pathname === p || pathname.startsWith(p + '/'));
+  const isPublicOnboarding = publicOnboardingPaths.has(pathname);
 
   if (isProtected && !req.auth) {
     const url = new URL('/signin', req.url);

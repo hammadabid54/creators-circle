@@ -57,7 +57,7 @@ export default async function HomePage() {
                     you want to create.
                   </p>
                   <Link
-                    href="/signin?callbackUrl=/creator/onboarding"
+                    href="/onboarding/role?intent=signup"
                     className="cc-button self-start"
                   >
                     Join the circle
@@ -74,7 +74,7 @@ export default async function HomePage() {
                   place to discover you.
                 </p>
               </div>
-              <Link href="/signin?callbackUrl=/creator/onboarding" className="cc-button">
+              <Link href="/onboarding/role?intent=signup" className="cc-button">
                 Create your profile
               </Link>
             </div>
@@ -82,6 +82,39 @@ export default async function HomePage() {
           <Link href="/creators" className="cc-link text-sm mt-6 inline-flex sm:hidden">
             Explore all creators →
           </Link>
+        </section>
+        <section className="cc-container py-14 md:py-20">
+          <div className="flex justify-between gap-5 items-end mb-7">
+            <div>
+              <p className="cc-eyebrow mb-3">Why Kollabo</p>
+              <h2 className="cc-title">Built for the way creators and brands actually work.</h2>
+            </div>
+          </div>
+          <div className="grid md:grid-cols-3 gap-5">
+            <div className="cc-panel p-6 border-l-4 border-[var(--color-anjuman-purple)]">
+              <p className="text-3xl md:text-4xl font-semibold text-anjuman-purple">Escrow</p>
+              <p className="text-2xl md:text-3xl font-semibold mt-1">your money stays safe</p>
+              <p className="cc-subtle mt-3">
+                Every payment sits in escrow until you approve the work. Released to the creator on
+                milestone sign-off — no off-platform deals, no invoice chasing.
+              </p>
+            </div>
+            <div className="cc-panel p-6 border-l-4 border-[var(--color-anjuman-green)]">
+              <p className="text-3xl md:text-4xl font-semibold text-[var(--color-anjuman-green)]">2 min</p>
+              <p className="text-2xl md:text-3xl font-semibold mt-1">to publish your kit</p>
+              <p className="cc-subtle mt-3">
+                Bio, niches, and a portfolio link. That is enough to start receiving invitations.
+              </p>
+            </div>
+            <div className="cc-panel p-6 border-l-4 border-[var(--color-anjuman-amber)]">
+              <p className="text-3xl md:text-4xl font-semibold text-[var(--color-anjuman-amber)]">3 days</p>
+              <p className="text-2xl md:text-3xl font-semibold mt-1">creator payout after approval</p>
+              <p className="cc-subtle mt-3">
+                Once you approve a milestone, the creator&apos;s payout is processed within 3 business
+                days. No 30-day waits, no invoice chasing.
+              </p>
+            </div>
+          </div>
         </section>
         <section id="how" className="bg-[#f0ebe7] border-y border-anjuman-line py-14 md:py-20">
           <div className="cc-container">
@@ -145,7 +178,7 @@ export default async function HomePage() {
                 I&apos;m looking for creators <ArrowUpRight size={17} />
               </Link>
               <Link
-                href="/signin?callbackUrl=/creator/onboarding"
+                href="/onboarding/role?intent=signup&role=creator"
                 className="cc-button border border-white/40 bg-transparent hover:bg-white/10"
               >
                 I&apos;m a creator

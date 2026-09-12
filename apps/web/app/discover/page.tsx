@@ -2,9 +2,10 @@ import { publishedCollections } from '@/lib/discovery-links';
 import Link from 'next/link';
 import { getLandingPages, getTaxonomy, type LandingPage } from '@/lib/discovery-taxonomy';
 import { SiteFooter } from '@/components/landing/site-footer';
+import { Breadcrumb } from '@/components/ui/breadcrumb';
 export const dynamic = 'force-dynamic';
 export const metadata = {
-  title: 'Explore creator categories and cities | Creators Circle',
+  title: 'Explore creator categories and cities | Kollabo',
   description: 'Browse Pakistani creators by niche, location and social platform.',
   alternates: { canonical: '/discover' },
 };
@@ -17,8 +18,11 @@ export default async function Discover() {
   return (
     <>
       <main className="cc-container py-12">
-        <p className="cc-eyebrow mb-3">Every perspective has a place</p>
-        <h1 className="cc-title">Find your corner of the circle.</h1>
+        <Breadcrumb items={[{ label: 'Home', href: '/' }, { label: 'Discover' }]} />
+        <div className="mt-6">
+          <p className="cc-eyebrow mb-3">Every perspective has a place</p>
+          <h1 className="cc-title">Find your corner of the circle.</h1>
+        </div>
         <p className="cc-subtle max-w-2xl mt-4 mb-7">
           Start with an interest, a city, or a platform. Explore real profiles and refine your
           search as you go.

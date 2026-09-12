@@ -31,7 +31,7 @@ async function context(props: Props) {
 export async function generateMetadata(props: Props) {
   const { page, result } = await context(props);
   return {
-    title: page.title + ' | Creators Circle',
+    title: page.title + ' | Kollabo',
     description: page.description,
     alternates: {
       canonical: '/discover/' + page.path + (result.page > 1 ? '?page=' + result.page : ''),

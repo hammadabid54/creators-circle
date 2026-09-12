@@ -6,7 +6,7 @@ import { Bookmark, Check, Columns2, Search, SlidersHorizontal, X } from 'lucide-
 import { CreatorCard, type CreatorCardData } from './creator-card';
 import type { Taxon } from '@/lib/discovery-taxonomy';
 import { formatPKRCompact, formatNumber } from '@/lib/utils';
-const SAVED_KEY = 'creators-circle:saved';
+const SAVED_KEY = 'kollabo:saved';
 const aliases: Record<string, string> = {
   lifestyle: 'Lifestyle',
   fashion: 'Fashion',
@@ -227,14 +227,22 @@ export function CreatorDirectory({
   const compared = selected
     .map((id) => comparisonCards.find((c) => c.id === id))
     .filter((c): c is CreatorCardData => !!c);
+  // Sort the autocomplete suggestions alphabetically. Cities first, then
+  // niches — keeps the dropdown readable instead of being a random mix.
+  const suggestions = taxa
+    .filter((t) => t.kind === 'niche' || t.kind === 'city')
+    .slice()
+    .sort((a, b) => {
+      if (a.kind !== b.kind) return a.kind === 'city' ? -1 : 1;
+      return a.label.localeCompare(b.label);
+    });
+
   return (
     <section aria-label="Creator directory">
       <datalist id="creator-query-suggestions">
-        {taxa
-          .filter((t) => t.kind === 'niche' || t.kind === 'city')
-          .map((t) => (
-            <option key={t.id} value={t.label} />
-          ))}
+        {suggestions.map((t) => (
+          <option key={t.id} value={t.label} />
+        ))}
       </datalist>
       <div className="flex flex-wrap gap-3 justify-between items-center mb-5">
         <form
@@ -427,7 +435,7 @@ export function CreatorDirectory({
         >
           {page > 1 && (
             <Link
-              className="cc-button-secondary"
+              className="cc-button cc-button-secondary"
               href={
                 '/creators?' +
                 (() => {
@@ -445,7 +453,7 @@ export function CreatorDirectory({
           </span>
           {page < pages && (
             <Link
-              className="cc-button-secondary"
+              className="cc-button cc-button-secondary"
               href={
                 '/creators?' +
                 (() => {
@@ -507,7 +515,7 @@ export function CreatorDirectory({
                 <th className="p-3">Details</th>
                 {compared.map((c) => (
                   <th className="p-3" key={c.id}>
-                    <Link className="cc-link" href={'/creators/' + c.id}>
+                    <Link className="cc-link" href={'/creators/' + (c.slug || c.id)}>
                       {c.name}
                     </Link>
                   </th>

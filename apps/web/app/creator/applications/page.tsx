@@ -1,10 +1,13 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { ArrowUpRight, FileText } from 'lucide-react';
+import { ArrowUpRight, FileText, Inbox } from 'lucide-react';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { WorkspaceNav } from '@/components/workspace-nav';
+import { Breadcrumb } from '@/components/ui/breadcrumb';
 import { formatPKR } from '@/lib/utils';
+import { ApplicationCard } from './application-card';
+import { EmptyState } from '@/components/ui/empty-state';
 export default async function ApplicationsPage() {
   const session = await auth();
   if (!session?.user?.id) redirect('/signin');
@@ -21,6 +24,12 @@ export default async function ApplicationsPage() {
     },
     orderBy: { createdAt: 'desc' },
   });
+  // Split: invites are first, so the creator sees them immediately.
+  // Invites are an action item (accept / decline); proposals are status
+  // updates the creator is already aware of.
+  const invitations = applications.filter((a) => a.status === 'invited');
+  const proposals = applications.filter((a) => a.status !== 'invited');
+
   return (
     <main className="cc-container py-9 md:py-12">
       <div className="grid lg:grid-cols-[190px_1fr] gap-6 lg:gap-10">
@@ -28,78 +37,56 @@ export default async function ApplicationsPage() {
           <WorkspaceNav role="creator" active="applications" />
         </aside>
         <div>
-          <p className="cc-eyebrow mb-3">Keep track of your next chapter</p>
-          <h1 className="cc-title">Your applications</h1>
-          <p className="cc-subtle mt-3 mb-8">Every proposal is a new possibility.</p>
-          {applications.length ? (
-            <div className="space-y-4">
-              {applications.map((a) => (
-                <article key={a.id} className="cc-panel p-5 md:p-6">
-                  <div className="flex flex-wrap justify-between items-start gap-3">
-                    <div>
-                      <p className="text-xs text-anjuman-purple mb-1">
-                        {a.campaign.brand.brandProfile?.company || 'Brand campaign'}
-                      </p>
-                      <Link href={'/creator/campaigns/' + a.campaignId}>
-                        <h2 className="text-lg font-semibold">{a.campaign.title}</h2>
-                      </Link>
-                    </div>
-                    <span className="text-xs px-3 py-1.5 rounded-full bg-[#f2eaf0] text-anjuman-purple capitalize">
-                      {a.status === 'reject'
-                        ? 'Declined'
-                        : a.status === 'accept'
-                          ? 'Accepted'
-                          : a.status === 'invited'
-                            ? 'Invited'
-                            : a.status}
-                    </span>
-                  </div>
-                  <p className="cc-subtle mt-4 whitespace-pre-wrap">{a.pitch}</p>
-                  <div className="mt-4 pt-4 border-t border-anjuman-line flex flex-wrap gap-3 justify-between text-sm">
-                    <span className="text-anjuman-ink-soft">
-                      {a.proposedRate > 0 ? (
-                        <>
-                          Your proposal ·{' '}
-                          <strong className="text-anjuman-ink">
-                            {formatPKR(a.proposedRate)}
-                          </strong>
-                        </>
-                      ) : (
-                        <em className="text-anjuman-ink-soft">
-                          Rate to be discussed in messages
-                        </em>
-                      )}
-                    </span>
-                    {a.campaign.contracts[0] ? (
-                      <Link
-                        className="cc-link inline-flex gap-1"
-                        href={'/messages/' + a.campaign.contracts[0].id}
-                      >
-                        Open conversation
-                        <ArrowUpRight size={15} />
-                      </Link>
-                    ) : (
-                      <Link className="cc-link inline-flex gap-1" href={'/messages/' + a.id}>
-                        Message brand
-                        <ArrowUpRight size={15} />
-                      </Link>
-                    )}
-                  </div>
-                </article>
-              ))}
-            </div>
-          ) : (
-            <div className="cc-panel p-12 text-center">
-              <FileText className="mx-auto text-anjuman-purple mb-4" size={28} />
-              <h2 className="text-2xl font-semibold">Find a brief that feels like you.</h2>
-              <p className="cc-subtle mt-3 mb-6">
-                Your proposals and their progress will appear here.
+          <Breadcrumb
+            items={[
+              { label: 'Home', href: '/' },
+              { label: 'Workspace', href: '/creator/dashboard' },
+              { label: 'Applications' },
+            ]}
+          />
+          <div className="mt-6">
+            <p className="cc-eyebrow mb-3">Keep track of your next chapter</p>
+            <h1 className="cc-title">Your applications</h1>
+            <p className="cc-subtle mt-3 mb-8">Invites first, your proposals below.</p>
+          </div>
+
+          {invitations.length > 0 && (
+            <section className="mb-10" data-testid="invitations-section">
+              <div className="flex items-center gap-2 mb-3">
+                <Inbox size={18} className="text-anjuman-purple" />
+                <h2 className="text-xl font-semibold">
+                  Invitations ({invitations.length})
+                </h2>
+              </div>
+              <p className="cc-subtle text-sm mb-4">
+                Brands have invited you to discuss a campaign. Accept to
+                start with your proposed rate, or decline to pass.
               </p>
-              <Link href="/creator/campaigns" className="cc-button cc-button-secondary">
-                Explore opportunities
-              </Link>
-            </div>
+              <div className="space-y-4">
+                {invitations.map((a) => (
+                  <ApplicationCard key={a.id} a={a} mode="invitation" />
+                ))}
+              </div>
+            </section>
           )}
+
+          {proposals.length > 0 ? (
+            <section className="mb-10">
+              <h2 className="text-xl font-semibold mb-4">Your proposals</h2>
+              <div className="space-y-4">
+                {proposals.map((a) => (
+                  <ApplicationCard key={a.id} a={a} mode="proposal" />
+                ))}
+              </div>
+            </section>
+          ) : invitations.length === 0 ? (
+            <EmptyState
+              variant="applications"
+              title="Find a brief that feels like you"
+              body="Your proposals and invitations will land here. Brands post campaigns every week — check back often."
+              cta={{ href: '/creator/campaigns', label: 'Explore opportunities' }}
+            />
+          ) : null}
         </div>
       </div>
     </main>

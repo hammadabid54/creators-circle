@@ -30,7 +30,7 @@ export function SyncButton() {
   }
   return (
     <div className="mt-4">
-      <button className="cc-button-secondary text-sm" onClick={sync} disabled={busy}>
+      <button className="cc-button cc-button-secondary text-sm" onClick={sync} disabled={busy}>
         <RefreshCw size={15} className={busy ? 'animate-spin' : ''} />
         {busy ? 'Refreshing…' : 'Refresh my statistics'}
       </button>

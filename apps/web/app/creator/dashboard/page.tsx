@@ -5,12 +5,18 @@ import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { parseList } from '@/lib/creators';
 import { WorkspaceNav } from '@/components/workspace-nav';
+import { Breadcrumb } from '@/components/ui/breadcrumb';
+import { ContractPipeline } from '@/components/contract-pipeline';
 import { formatPKRCompact } from '@/lib/utils';
+import {
+  OnboardingChecklist,
+  creatorChecklistItems,
+} from '@/components/onboarding-checklist';
 export default async function CreatorDashboardPage() {
   const session = await auth();
   if (!session?.user?.id) redirect('/signin');
   if (session.user.role !== 'creator') redirect('/onboarding/role');
-  const [user, applications, campaigns] = await Promise.all([
+  const [user, applications, campaigns, activeContracts, awaitingSignature] = await Promise.all([
     db.user.findUnique({
       where: { id: session.user.id },
       include: { creatorProfile: { include: { socialAccounts: true, rateCard: true } } },
@@ -24,6 +30,14 @@ export default async function CreatorDashboardPage() {
       where: { status: 'open' },
       orderBy: { createdAt: 'desc' },
       include: { brand: { select: { brandProfile: { select: { company: true } } } } },
+    }),
+    db.contract.count({
+      // pending_payout counts as "open" so a contract waiting on funds to
+      // release still shows in the active count, not the closed count.
+      where: { creatorId: session.user.id, status: { in: ['active', 'pending_signature', 'pending_payout'] } },
+    }),
+    db.contract.count({
+      where: { creatorId: session.user.id, status: 'pending_signature' },
     }),
   ]);
   const p = user?.creatorProfile;
@@ -48,7 +62,8 @@ export default async function CreatorDashboardPage() {
           <WorkspaceNav role="creator" />
         </aside>
         <div className="min-w-0">
-          <div className="flex flex-wrap justify-between gap-4 items-end mb-8">
+          <Breadcrumb items={[{ label: 'Home', href: '/' }, { label: 'Workspace' }]} />
+          <div className="flex flex-wrap justify-between gap-4 items-end mb-8 mt-6">
             <div>
               <p className="cc-eyebrow mb-3">Your creative workspace</p>
               <h1 className="cc-title">
@@ -56,7 +71,10 @@ export default async function CreatorDashboardPage() {
               </h1>
               <p className="cc-subtle mt-3">A little progress today. New possibilities tomorrow.</p>
             </div>
-            <Link className="cc-button cc-button-secondary" href={'/creators/' + session.user.id}>
+            <Link
+              className="cc-button cc-button-secondary"
+              href={'/creators/' + (p?.slug || session.user.id)}
+            >
               View my profile <ArrowUpRight size={16} />
             </Link>
           </div>
@@ -86,6 +104,18 @@ export default async function CreatorDashboardPage() {
               <ArrowUpRight size={16} />
             </Link>
           </section>
+          <ContractPipeline role="creator" userId={session.user.id} />
+          <OnboardingChecklist
+            role="creator"
+            items={creatorChecklistItems({
+              hasBio: Boolean(p?.bio?.trim()),
+              hasNiches: niches.length > 0,
+              hasCity: Boolean(p?.city?.trim()),
+              hasSlug: Boolean(p?.slug?.trim()),
+              isPublished: Boolean(p?.published),
+              hasAppliedOrInvited: matched.length > 0 || applications.length > 0,
+            })}
+          />
           <div className="grid xl:grid-cols-[1fr_280px] gap-7">
             <section>
               <div className="flex justify-between items-center mb-5">
@@ -118,6 +148,28 @@ export default async function CreatorDashboardPage() {
                   <h3 className="font-semibold">Your next opportunity is on its way.</h3>
                   <p className="cc-subtle mt-2">Open campaign briefs will appear here.</p>
                 </div>
+              )}
+              {(activeContracts > 0 || awaitingSignature > 0) && (
+                <section className="mt-8">
+                  <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-xl font-semibold">Your active contracts</h2>
+                    <Link href="/creator/contracts" className="cc-link text-sm">
+                      View all
+                    </Link>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="cc-panel p-4">
+                      <p className="cc-subtle text-xs uppercase tracking-wider">Active</p>
+                      <p className="text-2xl font-semibold mt-1">{activeContracts}</p>
+                    </div>
+                    <div className="cc-panel p-4 border-anjuman-purple/30">
+                      <p className="cc-subtle text-xs uppercase tracking-wider">Awaiting signature</p>
+                      <p className="text-2xl font-semibold mt-1 text-anjuman-purple">
+                        {awaitingSignature}
+                      </p>
+                    </div>
+                  </div>
+                </section>
               )}
               <h2 className="text-xl font-semibold mt-8 mb-5">Recent applications</h2>
               {applications.length ? (

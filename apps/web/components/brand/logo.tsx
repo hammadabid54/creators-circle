@@ -13,7 +13,7 @@ interface LogoProps {
 export function Logo({ href = '/', markSize = 28, className, showWordmark = true }: LogoProps) {
   const inner = (
     <span className={cn('inline-flex items-center gap-2.5', className)}>
-      <BurstMark size={markSize} title={showWordmark ? undefined : 'Creators Circle'} />
+      <BurstMark size={markSize} title={showWordmark ? undefined : 'Kollabo'} />
       {showWordmark && <Wordmark size="md" />}
     </span>
   );
@@ -22,7 +22,7 @@ export function Logo({ href = '/', markSize = 28, className, showWordmark = true
     return (
       <Link
         href={href}
-        aria-label="Creators Circle home"
+        aria-label="Kollabo home"
         className="inline-flex hover:opacity-80 transition-opacity"
       >
         {inner}

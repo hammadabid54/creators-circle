@@ -23,7 +23,7 @@ export function Wordmark({ className, size = 'md', showDot = false }: WordmarkPr
         className,
       )}
     >
-      Creators Circle{showDot ? '.' : ''}
+      Kollabo{showDot ? '.' : ''}
     </span>
   );
 }

@@ -27,6 +27,35 @@ export function ApplicationActions({ id, status }: { id: string; status: string 
     }
   }
   if (!['pending', 'shortlisted', 'invited'].includes(status)) return null;
+
+  // Direct invites are different: the brand owns the invite, so the
+  // natural action is to withdraw it, not "accept" their own invite.
+  // We still show a "Withdraw invite" so non-responsive creators
+  // don't get ghosted forever in the brand's list.
+  if (status === 'invited') {
+    return (
+      <div>
+        <div className="flex flex-wrap gap-2 mt-4">
+          <button
+            className="px-3 py-2 text-sm text-anjuman-ink-soft"
+            disabled={busy}
+            onClick={() => {
+              if (confirm('Withdraw this invite? The creator will no longer see it in their applications.'))
+                act('withdraw');
+            }}
+          >
+            {busy ? 'Updating…' : 'Withdraw invite'}
+          </button>
+        </div>
+        {error && (
+          <p role="alert" className="text-sm text-red-800 mt-3">
+            {error}
+          </p>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div>
       <div className="flex flex-wrap gap-2 mt-4">

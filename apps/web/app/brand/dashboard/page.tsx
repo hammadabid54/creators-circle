@@ -4,12 +4,18 @@ import { ArrowUpRight, FileText } from 'lucide-react';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { WorkspaceNav } from '@/components/workspace-nav';
+import { Breadcrumb } from '@/components/ui/breadcrumb';
+import { ContractPipeline } from '@/components/contract-pipeline';
 import { formatPKRCompact } from '@/lib/utils';
+import {
+  OnboardingChecklist,
+  brandChecklistItems,
+} from '@/components/onboarding-checklist';
 export default async function BrandDashboardPage() {
   const session = await auth();
   if (!session?.user?.id) redirect('/signin');
   if (session.user.role !== 'brand') redirect('/onboarding/role');
-  const [profile, campaigns, pending] = await Promise.all([
+  const [profile, campaigns, pending, activeContracts, awaitingSignature] = await Promise.all([
     db.brandProfile.findUnique({ where: { userId: session.user.id } }),
     db.campaign.findMany({
       where: { brandId: session.user.id },
@@ -17,6 +23,14 @@ export default async function BrandDashboardPage() {
       orderBy: { createdAt: 'desc' },
     }),
     db.application.count({ where: { campaign: { brandId: session.user.id }, status: 'pending' } }),
+    db.contract.count({
+      // pending_payout counts as "open" so a contract waiting on funds to
+      // release still shows in the active count, not the closed count.
+      where: { brandId: session.user.id, status: { in: ['active', 'pending_signature', 'pending_payout'] } },
+    }),
+    db.contract.count({
+      where: { brandId: session.user.id, status: 'pending_signature' },
+    }),
   ]);
   return (
     <main className="cc-container py-8 md:py-12">
@@ -25,7 +39,8 @@ export default async function BrandDashboardPage() {
           <WorkspaceNav role="brand" />
         </aside>
         <div className="min-w-0">
-          <div className="flex flex-wrap justify-between gap-5 items-end mb-8">
+          <Breadcrumb items={[{ label: 'Home', href: '/' }, { label: 'Workspace' }]} />
+          <div className="flex flex-wrap justify-between gap-5 items-end mb-8 mt-6">
             <div>
               <p className="cc-eyebrow mb-3">{profile?.company || 'Your brand'}</p>
               <h1 className="cc-title">Make your next move.</h1>
@@ -81,10 +96,21 @@ export default async function BrandDashboardPage() {
               <ArrowUpRight size={16} />
             </Link>
           </section>
-          <div className="grid grid-cols-3 border-y border-anjuman-line py-5 mb-9 gap-4">
+          <OnboardingChecklist
+            role="brand"
+            items={brandChecklistItems({
+              hasCompany: Boolean(profile?.company?.trim()),
+              hasIndustry: Boolean(profile?.industry?.trim()),
+              hasBudget: Boolean(profile?.monthlyBudget?.trim()),
+              hasCampaign: campaigns.length > 0,
+            })}
+          />
+          <ContractPipeline role="brand" userId={session.user.id} />
+          <div className="grid grid-cols-4 border-y border-anjuman-line py-5 mb-9 gap-4">
             {[
               ['Open campaigns', campaigns.filter((c) => c.status === 'open').length],
-              ['Awaiting review', pending],
+              ['Active contracts', activeContracts],
+              ['Awaiting signature', awaitingSignature],
               ['Total proposals', campaigns.reduce((n, c) => n + c._count.applications, 0)],
             ].map(([label, n]) => (
               <div key={String(label)}>

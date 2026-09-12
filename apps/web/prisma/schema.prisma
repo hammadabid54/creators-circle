@@ -1,4 +1,4 @@
-// Creators Circle — Prisma schema
+// Kollabo — Prisma schema
 //
 // Local dev: SQLite (file:./dev.db). No setup needed.
 // Production: Postgres (Supabase/Neon). Change `provider` and DATABASE_URL.
@@ -35,6 +35,11 @@ model User {
   // "creator" | "brand" | "admin"
   role          String?
   lang          String    @default("en")
+  // Bump to log a user out across every device instantly (ban, KYC
+  // rejection, support-side reset). The JWT carries the value at sign-in;
+  // the session callback rejects when the token's copy no longer matches
+  // the database. See lib/session-revoke.ts and lib/auth.ts.
+  sessionVersion Int      @default(0)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -59,7 +64,8 @@ model User {
   creatorApplications Application[] @relation("CreatorApplications")
   creatorContracts    Contract[]    @relation("CreatorContracts")
   creatorMessages     Message[]     @relation("CreatorMessages")
-  creatorReviews      Review[]      @relation("CreatorReviews")
+  reviewsWritten      Review[]      @relation("ReviewReviewer")
+  reviewsReceived     Review[]      @relation("ReviewReviewee")
 
   @@index([phone])
   @@index([email])
@@ -138,8 +144,16 @@ model CreatorProfile {
   avgRating     Float?
   verified      Boolean  @default(false)
   available     Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  // Public URL slug, e.g. "sara-hassan". Unique across the platform.
+  slug          String?  @unique
+  // Whether the creator has chosen to publish their profile. Defaults to
+  // false so a half-filled profile is never accidentally discoverable.
+  // A creator can publish at any completeness level; the public view
+  // surfaces a "profile in progress" note when relevant.
+  published     Boolean   @default(false)
+  publishedAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
   user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   socialAccounts SocialAccount[]
@@ -328,7 +342,7 @@ model Application {
   pitch          String?
   // JSON array of URLs
   portfolioLinks String?
-  // "pending" | "shortlisted" | "accepted" | "rejected"
+  // "pending" | "shortlisted" | "accepted" | "rejected" | "invited" | "withdrawn"
   status         String   @default("pending")
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -348,10 +362,17 @@ model Contract {
   agreedRate   Int
   // JSON: [{"type":"post","qty":2,"notes":"..."}]
   deliverables String   @default("[]")
-  // "active" | "completed" | "cancelled" | "disputed"
-  status       String   @default("active")
+  // "pending_signature" | "active" | "completed" | "cancelled" | "disputed"
+  // New contracts start in "pending_signature" so the creator can review
+  // and confirm before work begins.
+  status       String   @default("pending_signature")
   // "pending" | "funded" | "held" | "released" | "refunded"
   escrowState  String   @default("pending")
+  // The brand signs the contract by accepting a proposal (see
+  // /api/applications). The creator signs by hitting /api/contracts/[id]/sign.
+  // When both timestamps are set, status flips to "active".
+  brandSignedAt   DateTime?
+  creatorSignedAt DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -438,6 +459,7 @@ model Review {
   id                  String   @id @default(cuid())
   contractId          String
   reviewerId          String
+  revieweeId          String
   rating              Int
   body                String?
   responseRateScore   Int?
@@ -445,9 +467,12 @@ model Review {
   createdAt           DateTime @default(now())
 
   contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
-  reviewer User     @relation("CreatorReviews", fields: [reviewerId], references: [id], onDelete: Cascade)
+  reviewer User     @relation("ReviewReviewer", fields: [reviewerId], references: [id], onDelete: Cascade)
+  reviewee User     @relation("ReviewReviewee", fields: [revieweeId], references: [id], onDelete: Cascade)
 
   @@unique([contractId, reviewerId])
+  @@index([revieweeId])
+  @@index([contractId])
 }
 
 // ============================================================
@@ -554,4 +579,74 @@ model DeliveryReview {
  createdAt DateTime @default(now())
  submission ContentSubmission @relation(fields:[submissionId],references:[id],onDelete:Cascade)
  reviewer User @relation(fields:[reviewerId],references:[id])
+}
+
+// ============================================================
+// NOTIFICATIONS + AUDIT
+// ============================================================
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  // "application.invited" | "application.status_changed" |
+  // "contract.signed" | "work.submitted" | "milestone.approved" |
+  // "message.received" | "invite.received"
+  type      String
+  title     String
+  body      String?
+  // JSON: { contractId, applicationId, etc. � deep-link payload }
+  payload   String    @default("{}")
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  deliveries NotificationDelivery[]
+
+  @@index([userId, readAt, createdAt])
+}
+
+model NotificationDelivery {
+  id             String   @id @default(cuid())
+  notificationId String
+  // "inapp" | "email" | "sms" | "whatsapp" | "push"
+  channel        String
+  // "queued" | "sent" | "delivered" | "failed" | "suppressed"
+  status         String   @default("queued")
+  providerRef    String?
+  attempts       Int      @default(0)
+  error          String?
+  sendAfter      DateTime @default(now())
+  sentAt         DateTime?
+  createdAt      DateTime @default(now())
+
+  notification Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+
+  @@index([status, sendAfter])
+}
+
+model NotificationPreference {
+  userId  String
+  type    String
+  channel String
+  enabled Boolean @default(true)
+
+  @@id([userId, type, channel])
+}
+
+model AuditEvent {
+  id         String   @id @default(cuid())
+  // "user" | "admin" | "system" | "webhook"
+  actorType  String
+  actorId    String?
+  // "contract.signed" | "kyc.approved" | "escrow.released" | "application.status_changed" | ...
+  action     String
+  entityType String
+  entityId   String
+  before     String?
+  after      String?
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId, createdAt])
+  @@index([actorId, createdAt])
 }

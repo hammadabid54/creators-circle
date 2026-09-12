@@ -2,8 +2,9 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Check, Loader2 } from 'lucide-react';
+import { Check, Loader2 } from 'lucide-react';
 import { NICHE_OPTIONS, CITY_OPTIONS, INDUSTRY_OPTIONS, BUDGET_TIERS } from '@/lib/profile-data';
+import { Breadcrumb } from '@/components/ui/breadcrumb';
 interface Initial {
   company: string;
   industry: string;
@@ -49,11 +50,14 @@ export function BrandOnboardingForm({ initial }: { initial: Initial }) {
   }
   return (
     <div className="cc-container py-9 md:py-12">
-      <Link href="/brand/dashboard" className="cc-link text-sm inline-flex items-center gap-2 mb-8">
-        <ArrowLeft size={15} />
-        Workspace
-      </Link>
-      <div className="max-w-5xl mx-auto grid lg:grid-cols-[1fr_300px] gap-10">
+      <Breadcrumb
+        items={[
+          { label: 'Home', href: '/' },
+          { label: 'Workspace', href: '/brand/dashboard' },
+          { label: 'Brand profile' },
+        ]}
+      />
+      <div className="max-w-5xl mx-auto grid lg:grid-cols-[1fr_300px] gap-10 mt-6">
         <div>
           <p className="cc-eyebrow mb-3">Introduce your brand</p>
           <h1 className="cc-title">Good work starts with context.</h1>

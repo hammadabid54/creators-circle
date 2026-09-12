@@ -5,6 +5,8 @@ import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { parseList } from '@/lib/creators';
 import { WorkspaceNav } from '@/components/workspace-nav';
+import { Breadcrumb } from '@/components/ui/breadcrumb';
+import { EmptyState } from '@/components/ui/empty-state';
 import { formatPKRCompact } from '@/lib/utils';
 export default async function OpportunitiesPage() {
   const session = await auth();
@@ -33,9 +35,18 @@ export default async function OpportunitiesPage() {
           <WorkspaceNav role="creator" active="campaigns" />
         </aside>
         <div className="min-w-0">
-          <p className="cc-eyebrow mb-3">Find your next good thing</p>
-          <h1 className="cc-title">Open opportunities</h1>
-          <p className="cc-subtle mt-3 mb-8">Campaigns looking for a perspective like yours.</p>
+          <Breadcrumb
+            items={[
+              { label: 'Home', href: '/' },
+              { label: 'Workspace', href: '/creator/dashboard' },
+              { label: 'Opportunities' },
+            ]}
+          />
+          <div className="mt-6">
+            <p className="cc-eyebrow mb-3">Find your next good thing</p>
+            <h1 className="cc-title">Open opportunities</h1>
+            <p className="cc-subtle mt-3 mb-8">Campaigns looking for a perspective like yours.</p>
+          </div>
           {niches.length > 0 && (
             <div className="border-y border-anjuman-line py-4 mb-7 flex flex-wrap justify-between gap-3 text-sm">
               <p className="text-anjuman-ink-soft">Prioritizing {niches.slice(0, 3).join(', ')}</p>
@@ -85,16 +96,13 @@ export default async function OpportunitiesPage() {
               ))}
             </div>
           ) : (
-            <div className="cc-panel py-14 px-6 text-center">
-              <FileText size={28} className="mx-auto text-anjuman-purple mb-4" />
-              <h2 className="text-2xl font-semibold">Good briefs are worth waiting for.</h2>
-              <p className="cc-subtle mt-3 mb-5">
-                There are no open campaigns yet. Keep your profile ready for your next opportunity.
-              </p>
-              <Link href="/creator/onboarding" className="cc-button cc-button-secondary">
-                Update my profile
-              </Link>
-            </div>
+            <EmptyState
+              variant="opportunities"
+              title="Good briefs are worth waiting for"
+              body="There are no open campaigns yet. Keep your profile ready — brands post new opportunities every week."
+              cta={{ href: '/creator/onboarding', label: 'Update my profile' }}
+              secondaryCta={{ href: '/creators', label: 'Browse creators like you →' }}
+            />
           )}
         </div>
       </div>

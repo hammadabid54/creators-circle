@@ -19,6 +19,7 @@ export async function getPublicCreators(
     take: options.take ?? 24,
     select: {
       userId: true,
+      slug: true,
       bio: true,
       city: true,
       niches: true,
@@ -61,6 +62,7 @@ export async function getPublicCreators(
     const demo = p.socialAccounts.some((s) => s.connectionState === 'dev_mock');
     return {
       id: p.userId,
+      slug: p.slug,
       name: p.user.name || 'Creator',
       handle: p.socialAccounts[0]?.handle || '',
       city: p.city || 'Pakistan',
