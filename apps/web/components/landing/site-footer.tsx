@@ -13,6 +13,8 @@ export function SiteFooter() {
             <Link href="/creators">Discover creators</Link>
             <Link href="/creator/campaigns">Find work</Link>
             <Link href="/#how">How it works</Link>
+            <Link href="/privacy">Privacy</Link>
+            <Link href="/terms">Terms</Link>
           </nav>
         </div>
         <div className="mt-9 pt-6 border-t border-anjuman-line flex flex-wrap gap-3 justify-between text-xs text-anjuman-ink-soft">
