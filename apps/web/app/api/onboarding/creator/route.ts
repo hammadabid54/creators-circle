@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { slugify, fallbackSlug, uniqueSlug } from '@/lib/slug';
 const publicUrl = z
   .string()
   .url()
@@ -55,11 +56,38 @@ export async function POST(req: Request) {
       where: { id: session.user.id },
       data: { name: d.name, ...(d.image !== undefined ? { image: d.image || null } : {}) },
     });
+
+    // Slug rules:
+    // - On create: derive from name (slugified). Falls back to a deterministic
+    //   suffix of the user id if the name has no slug-able characters (rare,
+    //   mostly Urdu/emoji names).
+    // - On update: keep the existing slug if the profile already has one.
+    //   Otherwise derive now so old profiles that completed onboarding before
+    //   slug generation existed get a URL-safe public link.
+    // - Uniqueness: append -2, -3, ... on collision. The existing-slug set
+    //   includes the current profile's slug so re-saving won't ever drop the
+    //   caller's own URL.
+    const existing = await tx.creatorProfile.findUnique({
+      where: { userId: session.user.id },
+      select: { slug: true },
+    });
+    let slug = existing?.slug || null;
+    if (!slug) {
+      const base = slugify(d.name) || fallbackSlug(session.user.id);
+      const taken = await tx.creatorProfile.findMany({
+        where: { slug: { startsWith: base } },
+        select: { slug: true },
+      });
+      const set = new Set(taken.map((r) => r.slug).filter(Boolean) as string[]);
+      slug = uniqueSlug(base, set);
+    }
+
     const fields = {
       bio: d.bio || null,
       city: d.city,
       niches: JSON.stringify(d.niches),
       languages: JSON.stringify(d.languages),
+      slug,
       ...(d.available !== undefined ? { available: d.available } : {}),
     };
     const profile = await tx.creatorProfile.upsert({

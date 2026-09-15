@@ -142,14 +142,6 @@ export function OnboardingChecklist({
                   {item.ctaLabel} <ArrowRight size={12} />
                 </Link>
               )}
-              {item.done && (
-                <Link
-                  href={item.href}
-                  className="cc-link text-xs mt-auto inline-flex items-center gap-1"
-                >
-                  Update
-                </Link>
-              )}
             </li>
           );
         })}
@@ -211,7 +203,7 @@ export function creatorChecklistItems(opts: {
       id: 'profile',
       title: 'Complete your creator profile',
       why: 'Bio, niches, and city help brands find you in 2 seconds.',
-      href: '/creator/profile',
+      href: '/creator/onboarding',
       ctaLabel: 'Fill out your profile',
       done: opts.hasBio && opts.hasNiches && opts.hasCity && opts.hasSlug,
     },
