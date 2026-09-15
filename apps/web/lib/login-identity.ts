@@ -14,7 +14,7 @@ export async function authorizeIdentity(input: { email?: string; phone?: string;
     const email = key.slice(6);
     const existing = await db.$queryRaw<
       Array<{ id: string }>
-    >`SELECT id FROM User WHERE lower(email)=${email}`;
+    >`SELECT id FROM "User" WHERE lower(email)=${email}`;
     if (existing.length > 1) return null;
     if (existing[0])
       return db.user.update({ where: { id: existing[0].id }, data: { emailVerified: new Date() } });
