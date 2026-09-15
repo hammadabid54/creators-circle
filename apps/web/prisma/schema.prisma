@@ -1,7 +1,9 @@
 // Kollabo — Prisma schema
 //
-// Local dev: SQLite (file:./dev.db). No setup needed.
-// Production: Postgres (Supabase/Neon). Change `provider` and DATABASE_URL.
+// Production: Postgres. DATABASE_URL points at the live Postgres instance.
+// The previous SQLite fallback was removed when the schema switched to
+// Postgres as part of the deploy prep — every page that hits the DB
+// now requires the Postgres provider to match DATABASE_URL.
 //
 // Conventions:
 //   - String used for enum-like fields (SQLite compat). Postgres can later
@@ -16,7 +18,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
