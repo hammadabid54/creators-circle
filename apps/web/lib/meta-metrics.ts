@@ -21,7 +21,7 @@ import {
   type SyncFailure,
 } from '@/lib/sync-social';
 
-const GRAPH = 'https://graph.facebook.com/v18.0';
+const GRAPH = `https://graph.facebook.com/${process.env.META_GRAPH_VERSION || 'v22.0'}`;
 const TOKEN_REFRESH_URL = `${GRAPH}/oauth/access_token`;
 
 // ── Response schemas ────────────────────────────────────────────────────────
@@ -132,6 +132,7 @@ function engagementRateFromMedia(
 
 async function fetchInstagramProfile(
   accessToken: string,
+  externalId: string,
 ): Promise<{
   externalId: string;
   handle: string;
@@ -143,13 +144,13 @@ async function fetchInstagramProfile(
   // The Graph API supports `fields=...` on the user endpoint, and `media` is
   // a child edge we fetch separately.
   const userRes = await fetchWithTimeout(
-    `${GRAPH}/me?fields=id,username,followers_count,follows_count,media_count,biography&access_token=${encodeURIComponent(accessToken)}`,
+    `${GRAPH}/${encodeURIComponent(externalId)}?fields=id,username,followers_count,follows_count,media_count,biography&access_token=${encodeURIComponent(accessToken)}`,
   );
   if (!userRes.ok) throw classifyFetchError(userRes.status, userRes.headers.get('retry-after'));
   const user = igUserSchema.parse(await userRes.json());
 
   const mediaRes = await fetchWithTimeout(
-    `${GRAPH}/me/media?fields=id,caption,like_count,comments_count,media_type,timestamp,permalink&limit=10&access_token=${encodeURIComponent(accessToken)}`,
+    `${GRAPH}/${encodeURIComponent(externalId)}/media?fields=id,caption,like_count,comments_count,media_type,timestamp,permalink&limit=10&access_token=${encodeURIComponent(accessToken)}`,
   );
   if (!mediaRes.ok) throw classifyFetchError(mediaRes.status, mediaRes.headers.get('retry-after'));
   const media = igMediaSchema.parse(await mediaRes.json());
@@ -161,10 +162,7 @@ async function fetchInstagramProfile(
     views: 0, // IG Basic API doesn't expose view counts — left as 0 for now
     engagement:
       followers > 0
-        ? Math.min(
-            100,
-            (((p.like_count ?? 0) + (p.comments_count ?? 0)) / followers) * 100,
-          )
+        ? Math.min(100, (((p.like_count ?? 0) + (p.comments_count ?? 0)) / followers) * 100)
         : null,
   }));
 
@@ -181,6 +179,7 @@ async function fetchInstagramProfile(
 
 async function fetchFacebookPage(
   accessToken: string,
+  externalId: string,
 ): Promise<{
   externalId: string;
   handle: string;
@@ -197,7 +196,7 @@ async function fetchFacebookPage(
   );
   if (!pageRes.ok) throw classifyFetchError(pageRes.status, pageRes.headers.get('retry-after'));
   const pageData = z.object({ data: z.array(pageSchema) }).parse(await pageRes.json());
-  const page = pageData.data[0];
+  const page = pageData.data.find((item) => item.id === externalId);
   if (!page) {
     const err = new Error('No Facebook Pages are linked to this Meta account.') as SyncFailure;
     err.kind = 'malformed';
@@ -251,7 +250,8 @@ export async function syncInstagramAccount(id: string): Promise<void> {
   }
 
   const accessToken = await getValidAccessToken(id, (rt) => refreshMetaToken(id, rt));
-  const profile = await fetchInstagramProfile(accessToken);
+  if (!account.externalId) throw new Error('Reconnect Instagram to identify the account.');
+  const profile = await fetchInstagramProfile(accessToken, account.externalId);
 
   const observedAt = new Date();
   await recordMetrics({
@@ -291,7 +291,8 @@ export async function syncFacebookAccount(id: string): Promise<void> {
   }
 
   const accessToken = await getValidAccessToken(id, (rt) => refreshMetaToken(id, rt));
-  const page = await fetchFacebookPage(accessToken);
+  if (!account.externalId) throw new Error('Reconnect Facebook to identify the Page.');
+  const page = await fetchFacebookPage(accessToken, account.externalId);
 
   const observedAt = new Date();
   await recordMetrics({

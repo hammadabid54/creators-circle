@@ -2,7 +2,7 @@ import { allowSocialMocks } from '@/lib/social-providers';
 import { NextResponse } from 'next/server';
 
 import { auth } from '@/lib/auth';
-import { hasRealCredentials, buildAuthorizeUrl, PROVIDERS } from '@/lib/social-providers';
+import { hasRealCredentials, buildAuthorizeUrl } from '@/lib/social-providers';
 import { issueState } from '@/lib/oauth-state';
 
 export async function GET(req: Request) {
@@ -11,10 +11,6 @@ export async function GET(req: Request) {
     return NextResponse.redirect(new URL('/signin', req.url));
   }
 
-  if (!allowSocialMocks())
-    return NextResponse.redirect(
-      new URL('/creator/onboarding?error=provider_unavailable', req.url),
-    );
   if (session.user.role !== 'creator')
     return NextResponse.json({ error: 'Not a creator account' }, { status: 403 });
   const url = new URL(req.url);
@@ -36,6 +32,3 @@ export async function GET(req: Request) {
   const state = await issueState('meta', returnTo, false);
   return NextResponse.redirect(buildAuthorizeUrl('meta', state));
 }
-
-// keep reference so eslint doesn't drop the import
-void PROVIDERS;

@@ -14,10 +14,27 @@ const querySchema = z.object({
 
 interface MetaTokenResponse {
   access_token: string;
-  token_type: string;
-  expires_in: number;
-  refresh_token?: string;
+  token_type?: string;
+  expires_in?: number;
 }
+
+const pageSchema = z.object({
+  id: z.string(),
+  name: z.string().optional(),
+  username: z.string().optional(),
+  access_token: z.string().optional(),
+  followers_count: z.number().int().nonnegative().optional(),
+  fan_count: z.number().int().nonnegative().optional(),
+  instagram_business_account: z
+    .object({
+      id: z.string(),
+      username: z.string().optional(),
+      followers_count: z.number().int().nonnegative().optional(),
+    })
+    .optional(),
+});
+
+const accountsSchema = z.object({ data: z.array(pageSchema) });
 
 export async function GET(req: Request) {
   const session = await auth();
@@ -25,10 +42,6 @@ export async function GET(req: Request) {
     return NextResponse.redirect(new URL('/signin', req.url));
   }
 
-  if (!allowSocialMocks())
-    return NextResponse.redirect(
-      new URL('/creator/onboarding?error=provider_unavailable', req.url),
-    );
   if (session.user.role !== 'creator')
     return NextResponse.json({ error: 'Not a creator account' }, { status: 403 });
   const url = new URL(req.url);
@@ -122,30 +135,77 @@ export async function GET(req: Request) {
       }),
     });
     if (!tokenRes.ok) throw new Error(`token exchange failed: ${tokenRes.status}`);
-    const token = (await tokenRes.json()) as MetaTokenResponse;
+    const shortToken = (await tokenRes.json()) as MetaTokenResponse;
+    if (!shortToken.access_token) throw new Error('Meta did not return an access token.');
 
-    // Fetch IG user info via Graph API
-    // (In production: GET /me/accounts for pages, then GET /{ig-user-id}?fields=...)
-    const expiresAt = new Date(Date.now() + token.expires_in * 1000);
+    // Exchange the short-lived login token for a long-lived user token.
+    const graphVersion = process.env.META_GRAPH_VERSION || 'v22.0';
+    const longUrl = new URL(`https://graph.facebook.com/${graphVersion}/oauth/access_token`);
+    longUrl.searchParams.set('grant_type', 'fb_exchange_token');
+    longUrl.searchParams.set('client_id', process.env[cfg.clientIdEnv]!);
+    longUrl.searchParams.set('client_secret', process.env[cfg.clientSecretEnv]!);
+    longUrl.searchParams.set('fb_exchange_token', shortToken.access_token);
+    const longRes = await fetch(longUrl);
+    if (!longRes.ok) throw new Error(`long-lived token exchange failed: ${longRes.status}`);
+    const token = (await longRes.json()) as MetaTokenResponse;
+    if (!token.access_token) throw new Error('Meta did not return a long-lived token.');
+
+    // Resolve the Facebook Page and the Instagram professional account linked to it.
+    const accountsUrl = new URL(`https://graph.facebook.com/${graphVersion}/me/accounts`);
+    accountsUrl.searchParams.set(
+      'fields',
+      'id,name,username,followers_count,fan_count,instagram_business_account{id,username,followers_count}',
+    );
+    accountsUrl.searchParams.set('access_token', token.access_token);
+    const accountsRes = await fetch(accountsUrl);
+    if (!accountsRes.ok) throw new Error(`Meta account discovery failed: ${accountsRes.status}`);
+    const accounts = accountsSchema.parse(await accountsRes.json());
+    const page = accounts.data.find((item) => item.instagram_business_account);
+    if (!page?.instagram_business_account)
+      throw new Error('No Facebook Page with a linked Instagram professional account was found.');
+
+    const expiresAt = token.expires_in ? new Date(Date.now() + token.expires_in * 1000) : null;
+    const sharedToken = {
+      accessToken: token.access_token,
+      refreshToken: token.access_token,
+      tokenExpiresAt: expiresAt,
+      connectionState: 'connected',
+      lastSyncedAt: null,
+    };
+    const instagram = page.instagram_business_account;
 
     await db.socialAccount.upsert({
       where: { creatorId_platform: { creatorId: profile.id, platform: 'instagram' } },
       update: {
-        accessToken: token.access_token,
-        refreshToken: token.refresh_token ?? null,
-        tokenExpiresAt: expiresAt,
-        connectionState: 'connected',
-        lastSyncedAt: new Date(),
+        ...sharedToken,
+        externalId: instagram.id,
+        handle: instagram.username ?? 'instagram_creator',
+        followers: instagram.followers_count ?? 0,
       },
       create: {
         creatorId: profile.id,
         platform: 'instagram',
-        handle: 'pending_real_fetch',
-        accessToken: token.access_token,
-        refreshToken: token.refresh_token ?? null,
-        tokenExpiresAt: expiresAt,
-        connectionState: 'connected',
-        lastSyncedAt: new Date(),
+        externalId: instagram.id,
+        handle: instagram.username ?? 'instagram_creator',
+        followers: instagram.followers_count ?? 0,
+        ...sharedToken,
+      },
+    });
+    await db.socialAccount.upsert({
+      where: { creatorId_platform: { creatorId: profile.id, platform: 'facebook' } },
+      update: {
+        ...sharedToken,
+        externalId: page.id,
+        handle: page.username ?? page.name ?? 'facebook_page',
+        followers: page.followers_count ?? page.fan_count ?? 0,
+      },
+      create: {
+        creatorId: profile.id,
+        platform: 'facebook',
+        externalId: page.id,
+        handle: page.username ?? page.name ?? 'facebook_page',
+        followers: page.followers_count ?? page.fan_count ?? 0,
+        ...sharedToken,
       },
     });
     return NextResponse.redirect(new URL('/creator/onboarding?connected=meta', req.url));

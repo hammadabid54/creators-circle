@@ -28,8 +28,9 @@ export interface ProviderConfig {
   redirectPath: string;
 }
 
-const appBaseUrl = () =>
-  process.env.NEXTAUTH_URL || `http://localhost:${process.env.PORT || 3000}`;
+const appBaseUrl = () => process.env.NEXTAUTH_URL || `http://localhost:${process.env.PORT || 3000}`;
+
+const metaGraphVersion = () => process.env.META_GRAPH_VERSION || 'v22.0';
 
 export const PROVIDERS: Record<Provider, ProviderConfig> = {
   meta: {
@@ -38,10 +39,15 @@ export const PROVIDERS: Record<Provider, ProviderConfig> = {
     linkedPlatforms: ['instagram', 'facebook'],
     clientIdEnv: 'META_APP_ID',
     clientSecretEnv: 'META_APP_SECRET',
-    authorizeUrl: 'https://www.facebook.com/v18.0/dialog/oauth',
-    tokenUrl: 'https://graph.facebook.com/v18.0/oauth/access_token',
-    // For production, add pages_show_list, instagram_manage_insights
-    scopes: ['instagram_basic', 'pages_show_list', 'public_profile'],
+    authorizeUrl: `https://www.facebook.com/${metaGraphVersion()}/dialog/oauth`,
+    tokenUrl: `https://graph.facebook.com/${metaGraphVersion()}/oauth/access_token`,
+    scopes: [
+      'public_profile',
+      'pages_show_list',
+      'pages_read_engagement',
+      'instagram_basic',
+      'instagram_manage_insights',
+    ],
     redirectPath: '/api/social/meta/callback',
   },
   youtube: {
@@ -76,7 +82,11 @@ export function redirectUri(provider: Provider): string {
 /** True if all required env vars are present for a real OAuth call. */
 export function hasRealCredentials(provider: Provider): boolean {
   const cfg = PROVIDERS[provider];
-  return Boolean(process.env[cfg.clientIdEnv] && process.env[cfg.clientSecretEnv]);
+  return Boolean(
+    process.env[cfg.clientIdEnv] &&
+    process.env[cfg.clientSecretEnv] &&
+    (provider !== 'meta' || process.env.META_CONFIG_ID),
+  );
 }
 
 /** Build the provider's authorize URL with state. */
@@ -87,12 +97,16 @@ export function buildAuthorizeUrl(provider: Provider, state: string): string {
     client_id: clientId,
     redirect_uri: redirectUri(provider),
     response_type: 'code',
-    scope: cfg.scopes.join(' '),
     state,
   });
+  if (provider !== 'meta') params.set('scope', cfg.scopes.join(' '));
   if (provider === 'youtube') {
     params.set('access_type', 'offline');
     params.set('prompt', 'consent');
+  }
+  if (provider === 'meta') {
+    params.set('config_id', process.env.META_CONFIG_ID!);
+    params.set('override_default_response_type', 'true');
   }
   if (provider === 'tiktok') {
     params.set('response_type', 'code');
@@ -100,4 +114,6 @@ export function buildAuthorizeUrl(provider: Provider, state: string): string {
   return `${cfg.authorizeUrl}?${params.toString()}`;
 }
 
-export function allowSocialMocks() { return process.env.NODE_ENV === 'development' && process.env.SOCIAL_MOCK_MODE === 'true'; }
+export function allowSocialMocks() {
+  return process.env.NODE_ENV === 'development' && process.env.SOCIAL_MOCK_MODE === 'true';
+}
