@@ -179,7 +179,7 @@ export function MilestoneActions({
             )}
             {latest.caption && (
               <p className="cc-subtle text-xs italic whitespace-pre-wrap">
-                "{latest.caption}"
+                &quot;{latest.caption}&quot;
               </p>
             )}
           </div>
@@ -317,7 +317,7 @@ export function MilestoneActions({
           )}
           {latest.caption && (
             <p className="cc-subtle text-xs italic whitespace-pre-wrap">
-              "{latest.caption}"
+              &quot;{latest.caption}&quot;
             </p>
           )}
         </div>
