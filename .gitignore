@@ -33,6 +33,18 @@ dist/
 *.p12
 *.pfx
 
+# Google OAuth client secret JSON (downloaded from gcloud) — never commit
+client_secret_*.json
+google-credentials.json
+
+# Local scratch / temp
+commit-msg.txt
+apps/web/_*.cjs
+apps/web/check_*.py
+apps/web/migrate_*.py
+apps/web/seed-*.js
+apps/web/backfill-*.js
+
 # Local account inspection and demonstration helpers
 apps/web/check-user.cjs
 apps/web/check-socials.cjs
