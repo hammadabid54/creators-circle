@@ -21,14 +21,14 @@ const QUICK_PICKS = [
 
 export function HeroContent() {
   return (
-    <div className="absolute inset-0 flex flex-col justify-center p-8 sm:p-10 md:p-12 lg:p-14 text-white">
-      <p className="text-[11px] sm:text-xs uppercase tracking-[.18em] text-white/75 mb-3 sm:mb-4 font-medium">
+    <div className="absolute inset-0 flex flex-col justify-center p-6 sm:p-10 md:p-12 lg:p-14 text-white">
+      <p className="text-[10px] sm:text-xs uppercase tracking-[.18em] text-white/75 mb-3 font-medium">
         Pakistan&apos;s creator marketplace
       </p>
-      <h1 className="text-[36px] sm:text-[44px] md:text-[54px] lg:text-[62px] leading-[1.05] tracking-[-0.035em] font-semibold max-w-[640px]">
+      <h1 className="text-[28px] sm:text-[38px] md:text-[54px] lg:text-[62px] leading-[1.1] sm:leading-[1.05] tracking-[-0.035em] font-semibold max-w-[640px]">
         Find the creator who gets your brand.
       </h1>
-      <p className="mt-4 sm:mt-5 text-[15px] sm:text-base md:text-lg text-white/90 leading-relaxed max-w-xl">
+      <p className="mt-4 text-[14px] sm:text-base md:text-lg text-white/90 leading-relaxed max-w-xl">
         Find Pakistani creators who understand your brand. Compare their work, agree on the rate, and
         start in minutes.
       </p>
