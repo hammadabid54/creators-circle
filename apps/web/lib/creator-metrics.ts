@@ -29,7 +29,7 @@ export async function recordMetrics(input: MetricSnapshot) {
   const d = metricSchema.parse(input);
   if (+new Date(d.observedAt) > Date.now() + 60000)
     throw new Error('Future observations are invalid');
-  await db.$executeRaw`INSERT INTO CreatorMetricSnapshot (id,socialAccountId,observedAt,followers,source,posts,cities,ages) VALUES (${randomUUID()},${d.socialAccountId},${d.observedAt},${d.followers},${d.source},${JSON.stringify(d.posts)},${JSON.stringify(d.cities)},${JSON.stringify(d.ages)}) ON CONFLICT(socialAccountId,observedAt) DO NOTHING`;
+  await db.$executeRaw`INSERT INTO "CreatorMetricSnapshot" (id,"socialAccountId","observedAt",followers,source,posts,cities,ages) VALUES (${randomUUID()},${d.socialAccountId},${d.observedAt},${d.followers},${d.source},${JSON.stringify(d.posts)},${JSON.stringify(d.cities)},${JSON.stringify(d.ages)}) ON CONFLICT("socialAccountId","observedAt") DO NOTHING`;
 }
 export async function getMetricHistory(creatorId: string): Promise<MetricSnapshot[]> {
   const since = new Date(Date.now() - 90 * 86400000).toISOString();
@@ -43,7 +43,7 @@ export async function getMetricHistory(creatorId: string): Promise<MetricSnapsho
       cities: string;
       ages: string;
     }>
-  >`SELECT m.* FROM CreatorMetricSnapshot m JOIN SocialAccount s ON s.id=m.socialAccountId WHERE s.creatorId=${creatorId} AND s.connectionState!='dev_mock' AND m.observedAt>=${since} ORDER BY m.observedAt ASC LIMIT 1000`;
+  >`SELECT m.* FROM "CreatorMetricSnapshot" m JOIN "SocialAccount" s ON s.id=m."socialAccountId" WHERE s."creatorId"=${creatorId} AND s."connectionState"!='dev_mock' AND m."observedAt">=${since} ORDER BY m."observedAt" ASC LIMIT 1000`;
   return rows.flatMap((row) => {
     try {
       const parsed = metricSchema.safeParse({

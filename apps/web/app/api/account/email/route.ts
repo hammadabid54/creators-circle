@@ -26,7 +26,7 @@ export async function POST(req: Request) {
     );
   const others = await db.$queryRaw<
     Array<{ id: string }>
-  >`SELECT id FROM User WHERE lower(email)=${email} AND id!=${userId}`;
+  >`SELECT id FROM "User" WHERE lower(email)=${email} AND id!=${userId}`;
   if (others.length)
     return NextResponse.json(
       { error: 'This email cannot be added. Use a different email or sign in with it separately.' },

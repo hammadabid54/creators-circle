@@ -75,7 +75,7 @@ async function savePage(form: FormData) {
     );
     const duplicate = await db.$queryRaw<
       Array<{ path: string }>
-    >`SELECT path FROM DiscoveryPage WHERE filters=${encoded} AND path!=${d.path} AND redirectTo IS NULL`;
+    >`SELECT path FROM "DiscoveryPage" WHERE filters=${encoded} AND path!=${d.path} AND "redirectTo" IS NULL`;
     if (duplicate.length && !d.redirectTo)
       throw new Error(
         'These filters already have a page at ' + duplicate[0]!.path + '. Use a redirect instead.',
@@ -83,7 +83,7 @@ async function savePage(form: FormData) {
     if (d.redirectTo) {
       const target = await db.$queryRaw<
         Array<{ redirectTo: string | null }>
-      >`SELECT redirectTo FROM DiscoveryPage WHERE path=${d.redirectTo} AND published=1`;
+      >`SELECT "redirectTo" FROM "DiscoveryPage" WHERE path=${d.redirectTo} AND published=true`;
       if (d.redirectTo === d.path || !target.length || target[0]?.redirectTo)
         throw new Error('Redirect to an existing published page without another redirect.');
     }
@@ -96,7 +96,7 @@ async function savePage(form: FormData) {
             ' complete, non-demo profiles and 200 characters of reviewed, useful introduction.',
         );
     }
-    await db.$executeRaw`INSERT INTO DiscoveryPage(path,title,description,intro,filters,published,indexable,redirectTo,updatedAt) VALUES (${d.path},${d.title},${d.description},${d.intro},${encoded},${Number(d.published)},${Number(d.indexable)},${d.redirectTo || null},${new Date().toISOString()}) ON CONFLICT(path) DO UPDATE SET title=excluded.title,description=excluded.description,intro=excluded.intro,filters=excluded.filters,published=excluded.published,indexable=excluded.indexable,redirectTo=excluded.redirectTo,updatedAt=excluded.updatedAt`;
+    await db.$executeRaw`INSERT INTO "DiscoveryPage"(path,title,description,intro,filters,published,indexable,"redirectTo","updatedAt") VALUES (${d.path},${d.title},${d.description},${d.intro},${encoded},${Number(d.published)},${Number(d.indexable)},${d.redirectTo || null},${new Date().toISOString()}) ON CONFLICT(path) DO UPDATE SET title=excluded.title,description=excluded.description,intro=excluded.intro,filters=excluded.filters,published=excluded.published,indexable=excluded.indexable,"redirectTo"=excluded."redirectTo","updatedAt"=excluded."updatedAt"`;
     revalidateTag('discovery');
     revalidatePath('/discover', 'layout');
     revalidatePath('/sitemap.xml');
@@ -146,7 +146,7 @@ async function saveTaxon(form: FormData) {
     }
     const previous = await db.$queryRaw<
       Array<{ value: string }>
-    >`SELECT value FROM DiscoveryTaxon WHERE id=${id}`;
+    >`SELECT value FROM "DiscoveryTaxon" WHERE id=${id}`;
     if (previous[0] && previous[0].value !== d.value)
       throw new Error('Stored values are stable. Edit the display label or aliases instead.');
     const aliases = JSON.stringify(
@@ -159,7 +159,7 @@ async function saveTaxon(form: FormData) {
         ),
       ).slice(0, 30),
     );
-    await db.$executeRaw`INSERT INTO DiscoveryTaxon(id,kind,slug,label,value,parentId,aliases) VALUES (${id},${d.kind},${d.slug},${d.label},${d.value},${d.parentId || null},${aliases}) ON CONFLICT(id) DO UPDATE SET label=excluded.label,parentId=excluded.parentId,aliases=excluded.aliases`;
+    await db.$executeRaw`INSERT INTO "DiscoveryTaxon"(id,kind,slug,label,value,"parentId",aliases) VALUES (${id},${d.kind},${d.slug},${d.label},${d.value},${d.parentId || null},${aliases}) ON CONFLICT(id) DO UPDATE SET label=excluded.label,"parentId"=excluded."parentId",aliases=excluded.aliases`;
     revalidatePath('/discover', 'layout');
     revalidatePath('/creators');
   } catch (error) {
@@ -183,7 +183,7 @@ export default async function Admin({
 }) {
   await requireAdmin();
   const p = await searchParams;
-  const pages = await db.$queryRaw<LandingPage[]>`SELECT * FROM DiscoveryPage ORDER BY path`;
+  const pages = await db.$queryRaw<LandingPage[]>`SELECT * FROM "DiscoveryPage" ORDER BY path`;
   const current = pages.find((x) => x.path === p.edit);
   const taxa = await getTaxonomy();
   const taxon = taxa.find((t) => t.id === p.category);

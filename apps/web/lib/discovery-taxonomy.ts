@@ -11,7 +11,7 @@ export type Taxon = {
   enabled: number;
 };
 export async function getTaxonomy() {
-  return db.$queryRaw<Taxon[]>`SELECT * FROM DiscoveryTaxon WHERE enabled=1 ORDER BY kind,label`;
+  return db.$queryRaw<Taxon[]>`SELECT * FROM "DiscoveryTaxon" WHERE enabled=true ORDER BY kind,label`;
 }
 export const filterSchema = z.object({
   q: z.string().max(160).optional(),
@@ -41,13 +41,13 @@ export type LandingPage = {
   updatedAt: string;
 };
 export async function getLandingPages() {
-  return db.$queryRaw<LandingPage[]>`SELECT * FROM DiscoveryPage WHERE published=1 ORDER BY title`;
+  return db.$queryRaw<LandingPage[]>`SELECT * FROM "DiscoveryPage" WHERE published=true ORDER BY title`;
 }
 export async function getLandingPage(path: string) {
   return (
     await db.$queryRaw<
       LandingPage[]
-    >`SELECT * FROM DiscoveryPage WHERE path=${path} AND published=1`
+    >`SELECT * FROM "DiscoveryPage" WHERE path=${path} AND published=true`
   )[0];
 }
 export function parseFilters(input: Record<string, string | string[] | undefined>) {
