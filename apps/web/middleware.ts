@@ -2,6 +2,8 @@ import NextAuth from 'next-auth';
 import { authConfig } from '@/lib/auth.config';
 const { auth } = NextAuth(authConfig);
 import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { appOrigin } from '@/lib/app-url';
 
 const protectedPrefixes = ['/creator', '/brand', '/admin', '/account', '/messages'];
 
@@ -9,7 +11,7 @@ const protectedPrefixes = ['/creator', '/brand', '/admin', '/account', '/message
 // that gates signup. New users hit it before they have an account.
 const publicOnboardingPaths = new Set(['/onboarding/role']);
 
-export default auth((req) => {
+const authenticatedMiddleware = auth((req) => {
   const { pathname } = req.nextUrl;
   const isProtected = protectedPrefixes.some((p) => pathname === p || pathname.startsWith(p + '/'));
   const isPublicOnboarding = publicOnboardingPaths.has(pathname);
@@ -30,6 +32,20 @@ export default auth((req) => {
 
   return NextResponse.next();
 });
+
+export default function middleware(req: NextRequest) {
+  // Normalize before authentication or issuing host-only OAuth cookies.
+  if (process.env.NODE_ENV === 'production') {
+    const origin = appOrigin();
+    if (req.headers.get('host') !== new URL(origin).host) {
+      const canonical = new URL(origin);
+      canonical.pathname = req.nextUrl.pathname;
+      canonical.search = req.nextUrl.search;
+      return NextResponse.redirect(canonical, 307);
+    }
+  }
+  return authenticatedMiddleware(req, {});
+}
 
 export const config = {
   matcher: ['/((?!api/auth|_next/static|_next/image|favicon.ico|.*\\..*).*)'],

@@ -1,3 +1,4 @@
+import { appUrl } from '@/lib/app-url';
 import { allowSocialMocks } from '@/lib/social-providers';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
@@ -39,7 +40,7 @@ const accountsSchema = z.object({ data: z.array(pageSchema) });
 export async function GET(req: Request) {
   const session = await auth();
   if (!session?.user?.id) {
-    return NextResponse.redirect(new URL('/signin', req.url));
+    return NextResponse.redirect(appUrl('/signin'));
   }
 
   if (session.user.role !== 'creator')
@@ -51,23 +52,23 @@ export async function GET(req: Request) {
     error: url.searchParams.get('error') ?? undefined,
   });
   if (!parsed.success) {
-    return NextResponse.redirect(new URL('/creator/onboarding?error=bad_request', req.url));
+    return NextResponse.redirect(appUrl('/creator/onboarding?error=bad_request'));
   }
   if (parsed.data.error) {
     return NextResponse.redirect(
-      new URL(`/creator/onboarding?error=${encodeURIComponent(parsed.data.error)}`, req.url),
+      appUrl(`/creator/onboarding?error=${encodeURIComponent(parsed.data.error)}`),
     );
   }
 
   const statePayload = await consumeState(parsed.data.state);
   if (!statePayload || statePayload.provider !== 'meta') {
-    return NextResponse.redirect(new URL('/creator/onboarding?error=invalid_state', req.url));
+    return NextResponse.redirect(appUrl('/creator/onboarding?error=invalid_state'));
   }
 
   const userId = session.user.id;
   const profile = await db.creatorProfile.findUnique({ where: { userId } });
   if (!profile) {
-    return NextResponse.redirect(new URL('/creator/onboarding?error=no_profile', req.url));
+    return NextResponse.redirect(appUrl('/creator/onboarding?error=no_profile'));
   }
 
   const mock = statePayload.mock || !hasRealCredentials('meta');
@@ -76,7 +77,7 @@ export async function GET(req: Request) {
   // === Dev mock ===
   if ((mock && !allowSocialMocks()) || !code)
     return NextResponse.redirect(
-      new URL('/creator/onboarding?error=provider_unavailable', req.url),
+      appUrl('/creator/onboarding?error=provider_unavailable'),
     );
   if (mock) {
     // Persist two mock accounts: Instagram + Facebook
@@ -118,7 +119,7 @@ export async function GET(req: Request) {
         lastSyncedAt: new Date(),
       },
     });
-    return NextResponse.redirect(new URL('/creator/onboarding?connected=meta&mock=1', req.url));
+    return NextResponse.redirect(appUrl('/creator/onboarding?connected=meta&mock=1'));
   }
 
   // === Real Meta token exchange ===
@@ -208,9 +209,9 @@ export async function GET(req: Request) {
         ...sharedToken,
       },
     });
-    return NextResponse.redirect(new URL('/creator/onboarding?connected=meta', req.url));
+    return NextResponse.redirect(appUrl('/creator/onboarding?connected=meta'));
   } catch (err) {
     console.error('Meta OAuth error:', err);
-    return NextResponse.redirect(new URL('/creator/onboarding?error=meta_token_exchange', req.url));
+    return NextResponse.redirect(appUrl('/creator/onboarding?error=meta_token_exchange'));
   }
 }

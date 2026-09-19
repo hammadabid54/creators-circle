@@ -1,3 +1,4 @@
+import { appUrl } from '@/lib/app-url';
 import { fetchYouTubeChannel } from '@/lib/youtube-metrics';
 import { recordMetrics } from '@/lib/creator-metrics';
 import { allowSocialMocks } from '@/lib/social-providers';
@@ -24,7 +25,7 @@ interface GoogleTokenResponse {
 export async function GET(req: Request) {
   const session = await auth();
   if (!session?.user?.id) {
-    return NextResponse.redirect(new URL('/signin', req.url));
+    return NextResponse.redirect(appUrl('/signin'));
   }
 
   if (session.user.role !== 'creator')
@@ -36,23 +37,23 @@ export async function GET(req: Request) {
     error: url.searchParams.get('error') ?? undefined,
   });
   if (!parsed.success) {
-    return NextResponse.redirect(new URL('/creator/onboarding?error=bad_request', req.url));
+    return NextResponse.redirect(appUrl('/creator/onboarding?error=bad_request'));
   }
   if (parsed.data.error) {
     return NextResponse.redirect(
-      new URL(`/creator/onboarding?error=${encodeURIComponent(parsed.data.error)}`, req.url),
+      appUrl(`/creator/onboarding?error=${encodeURIComponent(parsed.data.error)}`),
     );
   }
 
   const statePayload = await consumeState(parsed.data.state);
   if (!statePayload || statePayload.provider !== 'youtube') {
-    return NextResponse.redirect(new URL('/creator/onboarding?error=invalid_state', req.url));
+    return NextResponse.redirect(appUrl('/creator/onboarding?error=invalid_state'));
   }
 
   const userId = session.user.id;
   const profile = await db.creatorProfile.findUnique({ where: { userId } });
   if (!profile) {
-    return NextResponse.redirect(new URL('/creator/onboarding?error=no_profile', req.url));
+    return NextResponse.redirect(appUrl('/creator/onboarding?error=no_profile'));
   }
 
   const mock = statePayload.mock || !hasRealCredentials('youtube');
@@ -60,7 +61,7 @@ export async function GET(req: Request) {
 
   if ((mock && !allowSocialMocks()) || !code)
     return NextResponse.redirect(
-      new URL('/creator/onboarding?error=provider_unavailable', req.url),
+      appUrl('/creator/onboarding?error=provider_unavailable'),
     );
   if (mock) {
     await db.socialAccount.upsert({
@@ -82,7 +83,7 @@ export async function GET(req: Request) {
         lastSyncedAt: new Date(),
       },
     });
-    return NextResponse.redirect(new URL('/creator/onboarding?connected=youtube&mock=1', req.url));
+    return NextResponse.redirect(appUrl('/creator/onboarding?connected=youtube&mock=1'));
   }
 
   try {
@@ -133,11 +134,11 @@ export async function GET(req: Request) {
       cities: [],
       ages: [],
     });
-    return NextResponse.redirect(new URL('/creator/onboarding?connected=youtube', req.url));
+    return NextResponse.redirect(appUrl('/creator/onboarding?connected=youtube'));
   } catch (err) {
     console.error('YouTube OAuth error:', err);
     return NextResponse.redirect(
-      new URL('/creator/onboarding?error=youtube_token_exchange', req.url),
+      appUrl('/creator/onboarding?error=youtube_token_exchange'),
     );
   }
 }

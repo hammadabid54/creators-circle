@@ -1,3 +1,4 @@
+import { appUrl } from '@/lib/app-url';
 import { allowSocialMocks } from '@/lib/social-providers';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
@@ -14,12 +15,12 @@ const querySchema = z.object({
 export async function GET(req: Request) {
   const session = await auth();
   if (!session?.user?.id) {
-    return NextResponse.redirect(new URL('/signin', req.url));
+    return NextResponse.redirect(appUrl('/signin'));
   }
 
   if (!allowSocialMocks())
     return NextResponse.redirect(
-      new URL('/creator/onboarding?error=provider_unavailable', req.url),
+      appUrl('/creator/onboarding?error=provider_unavailable'),
     );
   if (session.user.role !== 'creator')
     return NextResponse.json({ error: 'Not a creator account' }, { status: 403 });
@@ -30,23 +31,23 @@ export async function GET(req: Request) {
     error: url.searchParams.get('error') ?? undefined,
   });
   if (!parsed.success) {
-    return NextResponse.redirect(new URL('/creator/onboarding?error=bad_request', req.url));
+    return NextResponse.redirect(appUrl('/creator/onboarding?error=bad_request'));
   }
   if (parsed.data.error) {
     return NextResponse.redirect(
-      new URL(`/creator/onboarding?error=${encodeURIComponent(parsed.data.error)}`, req.url),
+      appUrl(`/creator/onboarding?error=${encodeURIComponent(parsed.data.error)}`),
     );
   }
 
   const statePayload = await consumeState(parsed.data.state);
   if (!statePayload || statePayload.provider !== 'tiktok') {
-    return NextResponse.redirect(new URL('/creator/onboarding?error=invalid_state', req.url));
+    return NextResponse.redirect(appUrl('/creator/onboarding?error=invalid_state'));
   }
 
   const userId = session.user.id;
   const profile = await db.creatorProfile.findUnique({ where: { userId } });
   if (!profile) {
-    return NextResponse.redirect(new URL('/creator/onboarding?error=no_profile', req.url));
+    return NextResponse.redirect(appUrl('/creator/onboarding?error=no_profile'));
   }
 
   // Always mock for now — TikTok business partnership pending
@@ -69,5 +70,5 @@ export async function GET(req: Request) {
       lastSyncedAt: new Date(),
     },
   });
-  return NextResponse.redirect(new URL('/creator/onboarding?connected=tiktok&mock=1', req.url));
+  return NextResponse.redirect(appUrl('/creator/onboarding?connected=tiktok&mock=1'));
 }

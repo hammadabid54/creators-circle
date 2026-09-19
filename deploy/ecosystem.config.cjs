@@ -20,6 +20,8 @@ module.exports = {
       env: {
         NODE_ENV: "production",
         PORT: 3001,
+        AUTH_URL: "https://kollabo.pk",
+        NEXTAUTH_URL: "https://kollabo.pk",
       },
       out_file: "/var/log/kollabo/out.log",
       error_file: "/var/log/kollabo/error.log",

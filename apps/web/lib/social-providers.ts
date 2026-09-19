@@ -7,6 +7,8 @@
  * is testable without provider credentials.
  */
 
+import { appOrigin } from './app-url';
+
 export type Provider = 'meta' | 'youtube' | 'tiktok';
 
 export interface ProviderConfig {
@@ -28,7 +30,6 @@ export interface ProviderConfig {
   redirectPath: string;
 }
 
-const appBaseUrl = () => process.env.NEXTAUTH_URL || `http://localhost:${process.env.PORT || 3000}`;
 
 const metaGraphVersion = () => process.env.META_GRAPH_VERSION || 'v22.0';
 
@@ -76,7 +77,7 @@ export const PROVIDERS: Record<Provider, ProviderConfig> = {
 
 /** Build the full redirect URI for a provider callback. */
 export function redirectUri(provider: Provider): string {
-  return `${appBaseUrl()}${PROVIDERS[provider].redirectPath}`;
+  return `${appOrigin()}${PROVIDERS[provider].redirectPath}`;
 }
 
 /** True if all required env vars are present for a real OAuth call. */

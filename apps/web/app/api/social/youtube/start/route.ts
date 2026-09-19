@@ -1,3 +1,4 @@
+import { appUrl } from '@/lib/app-url';
 import { allowSocialMocks } from '@/lib/social-providers';
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
@@ -7,7 +8,7 @@ import { issueState } from '@/lib/oauth-state';
 export async function GET(req: Request) {
   const session = await auth();
   if (!session?.user?.id) {
-    return NextResponse.redirect(new URL('/signin', req.url));
+    return NextResponse.redirect(appUrl('/signin'));
   }
 
   if (session.user.role !== 'creator')
@@ -18,10 +19,10 @@ export async function GET(req: Request) {
   if (!hasRealCredentials('youtube')) {
     if (!allowSocialMocks())
       return NextResponse.redirect(
-        new URL('/creator/onboarding?error=provider_unavailable', req.url),
+        appUrl('/creator/onboarding?error=provider_unavailable'),
       );
     const state = await issueState('youtube', returnTo, true);
-    const fake = new URL('/api/social/youtube/callback', req.url);
+    const fake = appUrl('/api/social/youtube/callback');
     fake.searchParams.set('code', 'dev_mock_' + state);
     fake.searchParams.set('state', state);
     return NextResponse.redirect(fake);
